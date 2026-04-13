@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "Elytron Biotech" },
+    { name = "Lucas Servi" },
 ]
 keywords = [
     "mcp",
@@ -50,9 +50,9 @@ dev = [
 kegg-mcp-server = "kegg_mcp_server.server:main"
 
 [project.urls]
-Homepage = "https://github.com/elytron-biotech/kegg-mcp-server"
-Repository = "https://github.com/elytron-biotech/kegg-mcp-server"
-Issues = "https://github.com/elytron-biotech/kegg-mcp-server/issues"
+Homepage = "https://github.com/Lucas-Servi/kegg-mcp-server-python"
+Repository = "https://github.com/Lucas-Servi/kegg-mcp-server-python"
+Issues = "https://github.com/Lucas-Servi/kegg-mcp-server-python/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/kegg_mcp_server"]
