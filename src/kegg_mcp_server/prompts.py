@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ def register_prompts(mcp: FastMCP) -> None:
         """
         org_list = [o.strip() for o in organisms.split(",")]
         org_str = ", ".join(org_list)
-        numeric_id = pathway_id.lstrip("map").lstrip("hsa").lstrip("mmu").lstrip("eco")
+        numeric_id = re.sub(r"^[a-z]+", "", pathway_id)
 
         return (
             f"Compare the metabolic pathway {pathway_id} across these organisms: {org_str}\n\n"
