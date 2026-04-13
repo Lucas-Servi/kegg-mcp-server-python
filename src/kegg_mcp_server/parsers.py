@@ -7,6 +7,7 @@ KEGG returns two main formats:
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # ------------------------------------------------------------------
@@ -45,7 +46,7 @@ def parse_link_response(text: str) -> list[tuple[str, str]]:
 
 def parse_conv_response(text: str) -> dict[str, str]:
     """Parse /conv response into {source_id: target_id}."""
-    return {a: b for a, b in parse_link_response(text)}
+    return dict(parse_link_response(text))
 
 
 def parse_ddi_response(text: str) -> list[dict[str, str]]:
@@ -97,21 +98,28 @@ _MAP_SECTIONS = frozenset(
         "NETWORK",
         "VARIANT",
         "TARGET",
-        "BRITE",
     }
 )
 
-# Sections that are raw multi-line sequence / text blocks
-_TEXT_SECTIONS = frozenset({"AASEQ", "NTSEQ", "COMMENT", "REMARK", "STRUCTURE", "SEQUENCE"})
+# Sections that are raw multi-line text blocks, joined with newlines
+_TEXT_SECTIONS = frozenset(
+    {"AASEQ", "NTSEQ", "COMMENT", "REMARK", "STRUCTURE", "SEQUENCE", "BRITE"}
+)
+
+# Pattern matching KEGG-style identifiers: C00002, R00756, K01234, D00001, G00001,
+# M00001, H00004, or EC-style numbers like 1.1.1.1
+_KEGG_ID_RE = re.compile(r"^[A-Za-z]\d{4,}$|^\d+\.\d+\.\d+\.\d+$")
 
 
 def parse_flat_entry(text: str) -> dict[str, Any]:
     """Parse a single KEGG flat-file entry into a structured dict.
 
     KEGG flat-file format:
-      - Field names occupy columns 0–11 (left-padded, 12 chars total)
+      - Top-level field names start at column 0 (no leading space)
       - Content starts at column 12
-      - Continuation lines have blank field name (spaces in 0–11)
+      - Continuation lines have spaces in columns 0–11
+      - Sub-section fields (e.g. AUTHORS under REFERENCE) start with spaces
+        in columns 0–11 but have a non-empty field label
       - Entries end with "///"
     """
     result: dict[str, Any] = {}
@@ -122,24 +130,37 @@ def parse_flat_entry(text: str) -> dict[str, Any]:
         if line.startswith("///"):
             break
 
-        if len(line) >= 12:
-            field_raw = line[:12]
-            content = line[12:].strip()
-        else:
-            field_raw = line
-            content = ""
+        if not line.strip():
+            continue
 
-        field_name = field_raw.strip()
+        # A new top-level section starts at column 0 (no leading whitespace).
+        # Sub-sections (e.g. "  AUTHORS   ...") have leading spaces and are
+        # treated as continuation lines belonging to the current section.
+        is_new_section = len(line) > 0 and not line[0].isspace()
 
-        if field_name:
+        if is_new_section:
+            # Extract field name and content
+            if len(line) >= 12:
+                field_name = line[:12].strip()
+                content = line[12:].strip()
+            else:
+                field_name = line.strip()
+                content = ""
+
+            # Flush previous section
             if current_section is not None:
                 _flush_section(result, current_section, buffer)
+
             current_section = field_name
             buffer = [content] if content else []
         else:
-            if content:
-                buffer.append(content)
+            # Continuation or sub-section line — include sub-field labels
+            # (e.g. "  AUTHORS   Smith J" becomes "AUTHORS   Smith J")
+            line_content = line.lstrip()
+            if line_content:
+                buffer.append(line_content)
 
+    # Flush final section
     if current_section is not None:
         _flush_section(result, current_section, buffer)
 
@@ -162,6 +183,11 @@ def parse_multi_flat(text: str) -> list[dict[str, Any]]:
         if parsed:
             entries.append(parsed)
     return entries
+
+
+def _is_kegg_id(token: str) -> bool:
+    """Check if a token looks like a KEGG identifier."""
+    return bool(_KEGG_ID_RE.match(token))
 
 
 def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> None:
@@ -195,15 +221,27 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
     elif section_upper in _MAP_SECTIONS:
         mapping: dict[str, str] = {}
         for line in lines:
-            parts = line.split(None, 1)
-            if len(parts) == 2:
-                mapping[parts[0]] = parts[1]
-            elif parts:
-                mapping[parts[0]] = ""
+            # Detect flat ID lists (e.g. "R00002 R00076 R00085 R00086" in compound
+            # REACTION sections, or "1.1.1.37 1.1.1.40" in compound ENZYME sections).
+            # If ALL tokens on the line look like KEGG IDs, store each as a separate key.
+            all_tokens = line.split()
+            if len(all_tokens) > 1 and all(_is_kegg_id(t) for t in all_tokens):
+                for token in all_tokens:
+                    mapping[token] = ""
+            else:
+                parts = line.split(None, 1)
+                if len(parts) == 2:
+                    mapping[parts[0]] = parts[1]
+                elif parts:
+                    mapping[parts[0]] = ""
         result[section.lower()] = mapping
 
     elif section_upper in _TEXT_SECTIONS:
-        result[section.lower()] = "\n".join(lines)
+        # For sequence sections, skip the numeric length line (first line)
+        if section_upper in ("AASEQ", "NTSEQ") and lines and lines[0].strip().isdigit():
+            result[section.lower()] = "\n".join(lines[1:]) if len(lines) > 1 else ""
+        else:
+            result[section.lower()] = "\n".join(lines)
 
     elif section_upper in ("EXACT_MASS", "MOL_WEIGHT"):
         try:
@@ -240,17 +278,26 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
 
 
 def _parse_references(lines: list[str]) -> list[dict[str, str]]:
-    """Parse continuation lines under a REFERENCE section."""
+    """Parse lines within a REFERENCE section.
+
+    Lines may include sub-field labels (AUTHORS, TITLE, JOURNAL) from the
+    sub-section parsing, plus optional PMID identifiers.
+    """
+    refs: list[dict[str, str]] = []
     current: dict[str, str] = {}
+
     for line in lines:
         if "PMID:" in line:
             current["pmid"] = line.split("PMID:")[1].strip().rstrip(")")
         elif line.startswith("AUTHORS"):
-            current["authors"] = line[7:].strip()
+            current["authors"] = line[len("AUTHORS"):].strip()
         elif line.startswith("TITLE"):
-            current["title"] = line[5:].strip()
+            current["title"] = line[len("TITLE"):].strip()
         elif line.startswith("JOURNAL"):
-            current["journal"] = line[7:].strip()
+            current["journal"] = line[len("JOURNAL"):].strip()
         elif line.strip():
             current.setdefault("ref_id", line.strip())
-    return [current] if current else []
+
+    if current:
+        refs.append(current)
+    return refs

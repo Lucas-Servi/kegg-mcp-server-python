@@ -5,7 +5,7 @@ A Python [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server 
 [![PyPI](https://img.shields.io/pypi/v/kegg-mcp-server)](https://pypi.org/project/kegg-mcp-server/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/elytron-biotech/kegg-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/elytron-biotech/kegg-mcp-server/actions)
+[![CI](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions/workflows/ci.yml/badge.svg)](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions)
 
 ---
 
@@ -198,7 +198,7 @@ python -m kegg_mcp_server --transport stdio
 ## Development
 
 ```bash
-git clone https://github.com/elytron-biotech/kegg-mcp-server
+git clone https://github.com/Lucas-Servi/kegg-mcp-server-python
 cd kegg-mcp-server
 pip install -e ".[dev]"
 
