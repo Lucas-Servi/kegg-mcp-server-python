@@ -1,17 +1,21 @@
-# kegg-mcp-server
-
-A Python [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for the [KEGG](https://www.kegg.jp) bioinformatics database. Exposes 33 tools, 8 resource templates, and 3 guided bioinformatics prompts to any MCP-compatible LLM client (Claude, etc.).
+# kegg-mcp-server-python
 
 [![PyPI](https://img.shields.io/pypi/v/kegg-mcp-server)](https://pypi.org/project/kegg-mcp-server/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions/workflows/ci.yml/badge.svg)](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions)
 
+An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **33 tools**, **8 resource templates**, and **3 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.).
+
+Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes TTL caching and batch helpers out of the box. No API key required -- uses the free KEGG REST API.
+
+> **Note:** This is a community project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories.
+
 ---
 
-## Quick Start
+## Quick start
 
-### With uvx (no install needed)
+### With `uvx` (no install)
 
 ```bash
 uvx kegg-mcp-server
@@ -24,9 +28,7 @@ pip install kegg-mcp-server
 kegg-mcp-server
 ```
 
----
-
-## Claude Desktop Setup
+### Claude Desktop
 
 Add to your `claude_desktop_config.json`:
 
@@ -41,156 +43,81 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-Config file locations:
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+<details>
+<summary>Config file locations</summary>
 
----
+| OS | Path |
+|----|------|
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Linux | `~/.config/Claude/claude_desktop_config.json` |
 
-## Features
+</details>
 
-- **33 MCP tools** across 13 KEGG database categories
-- **8 resource templates** for direct URI-based entity access
-- **3 guided prompts** for common bioinformatics workflows
-- **Structured Pydantic output** — tools return typed JSON, not raw text
-- **Batch support** — fetch up to 50 entries at once (auto-chunked to respect KEGG's 10-entry limit)
-- **TTL caching** — repeated queries served from memory (5-minute default TTL)
-- **No API key required** — uses the free KEGG REST API at `https://rest.kegg.jp`
-
----
-
-## Tool Reference
-
-### Database
-| Tool | Description |
-|------|-------------|
-| `get_database_info` | Release info and statistics for any KEGG database |
-| `list_organisms` | All organisms available in KEGG (~26,000+) |
-
-### Pathways
-| Tool | Description |
-|------|-------------|
-| `search_pathways` | Search pathways by keyword and organism |
-| `get_pathway_info` | Full pathway details including genes, compounds, reactions |
-| `get_pathway_genes` | All genes in a pathway |
-| `get_pathway_compounds` | All metabolites in a pathway |
-| `get_pathway_reactions` | All reactions in a pathway |
-
-### Genes
-| Tool | Description |
-|------|-------------|
-| `search_genes` | Search genes in any organism |
-| `get_gene_info` | Gene details, orthologs, sequences |
-| `get_gene_orthologs` | Cross-species orthologs via KO entries |
-
-### Compounds
-| Tool | Description |
-|------|-------------|
-| `search_compounds` | Search by name, formula, or mass |
-| `get_compound_info` | Compound details, reactions, pathways |
-| `get_compound_reactions` | All reactions involving a compound |
-
-### Reactions
-| Tool | Description |
-|------|-------------|
-| `search_reactions` | Search reactions by keyword |
-| `get_reaction_info` | Reaction equation, enzymes, pathways |
-
-### Enzymes
-| Tool | Description |
-|------|-------------|
-| `search_enzymes` | Search by EC number or name |
-| `get_enzyme_info` | Enzyme details, substrates, genes |
-
-### Diseases
-| Tool | Description |
-|------|-------------|
-| `search_diseases` | Search KEGG disease database |
-| `get_disease_info` | Disease genes, drugs, pathways |
-
-### Drugs
-| Tool | Description |
-|------|-------------|
-| `search_drugs` | Search drugs by name, formula, or mass |
-| `get_drug_info` | Drug targets, classification, interactions |
-| `get_drug_interactions` | Drug-drug interaction screening |
-
-### Modules
-| Tool | Description |
-|------|-------------|
-| `search_modules` | Search KEGG functional modules |
-| `get_module_info` | Module definition, reactions, orthology |
-
-### Orthology (KO)
-| Tool | Description |
-|------|-------------|
-| `search_ko_entries` | Search KEGG Orthology entries |
-| `get_ko_info` | KO entry details, genes, pathways |
-
-### Glycans
-| Tool | Description |
-|------|-------------|
-| `search_glycans` | Search glycan database |
-| `get_glycan_info` | Glycan composition and reactions |
-
-### BRITE Hierarchies
-| Tool | Description |
-|------|-------------|
-| `search_brite` | Search BRITE functional hierarchies |
-| `get_brite_info` | Hierarchy content and structure |
-
-### Cross-Database
-| Tool | Description |
-|------|-------------|
-| `batch_entry_lookup` | Fetch up to 50 entries in bulk |
-| `convert_identifiers` | Map between KEGG and external IDs (UniProt, NCBI, ChEBI, PubChem) |
-| `find_related_entries` | Find cross-database relationships for any entry |
-
----
-
-## Resource Templates
-
-Direct URI access to KEGG entities:
-
-| URI | Description |
-|-----|-------------|
-| `kegg://pathway/{pathway_id}` | Pathway entry (e.g. `kegg://pathway/hsa00010`) |
-| `kegg://gene/{gene_id}` | Gene entry (e.g. `kegg://gene/hsa:1956`) |
-| `kegg://compound/{compound_id}` | Compound entry (e.g. `kegg://compound/C00002`) |
-| `kegg://reaction/{reaction_id}` | Reaction entry (e.g. `kegg://reaction/R00756`) |
-| `kegg://disease/{disease_id}` | Disease entry (e.g. `kegg://disease/H00004`) |
-| `kegg://drug/{drug_id}` | Drug entry (e.g. `kegg://drug/D00001`) |
-| `kegg://organism/{org_code}` | Pathway list for an organism (e.g. `kegg://organism/hsa`) |
-| `kegg://search/{database}/{query}` | Search any database (e.g. `kegg://search/compound/glucose`) |
-
----
-
-## Prompts
-
-Three guided workflows for common bioinformatics analyses:
-
-| Prompt | Arguments | Description |
-|--------|-----------|-------------|
-| `pathway_enrichment_analysis` | `gene_list`, `organism` | Map gene list → KEGG IDs → pathways → enrichment summary |
-| `drug_target_investigation` | `drug_name` | Drug → targets → pathways → interaction screening |
-| `metabolic_pathway_comparison` | `pathway_id`, `organisms` | Compare pathway gene/compound content across species |
-
----
-
-## Configuration
-
-### Transport
+### Claude Code
 
 ```bash
-# stdio (default, for Claude Desktop / uvx)
+claude mcp add kegg-mcp-server -- uvx kegg-mcp-server
+```
+
+---
+
+## What's included
+
+### 33 Tools
+
+| Category | Tools | Examples |
+|----------|-------|---------|
+| **Database** | `get_database_info`, `list_organisms` | Get KEGG release stats, list all ~26k organisms |
+| **Pathways** | `search_pathways`, `get_pathway_info`, `get_pathway_genes`, `get_pathway_compounds`, `get_pathway_reactions` | Search by keyword, get full pathway details |
+| **Genes** | `search_genes`, `get_gene_info`, `get_gene_orthologs` | Find genes in any organism, cross-species orthologs |
+| **Compounds** | `search_compounds`, `get_compound_info`, `get_compound_reactions` | Search by name/formula/mass, find reactions |
+| **Reactions** | `search_reactions`, `get_reaction_info` | Equation, enzymes, pathways for any reaction |
+| **Enzymes** | `search_enzymes`, `get_enzyme_info` | EC number lookup, substrates, genes |
+| **Diseases** | `search_diseases`, `get_disease_info` | Disease genes, drugs, pathways |
+| **Drugs** | `search_drugs`, `get_drug_info`, `get_drug_interactions` | Drug targets, DDI screening |
+| **Modules** | `search_modules`, `get_module_info` | Functional module definitions |
+| **Orthology** | `search_ko_entries`, `get_ko_info` | KEGG Orthology entries |
+| **Glycans** | `search_glycans`, `get_glycan_info` | Glycan composition, reactions |
+| **BRITE** | `search_brite`, `get_brite_info` | Functional hierarchies |
+| **Cross-database** | `batch_entry_lookup`, `convert_identifiers`, `find_related_entries` | Bulk fetch (up to 50), ID mapping (UniProt, NCBI, ChEBI, PubChem) |
+
+### 8 Resource Templates
+
+Direct URI-based access to KEGG entities:
+
+```
+kegg://pathway/{pathway_id}      e.g. kegg://pathway/hsa00010
+kegg://gene/{gene_id}            e.g. kegg://gene/hsa:1956
+kegg://compound/{compound_id}    e.g. kegg://compound/C00002
+kegg://reaction/{reaction_id}    e.g. kegg://reaction/R00756
+kegg://disease/{disease_id}      e.g. kegg://disease/H00004
+kegg://drug/{drug_id}            e.g. kegg://drug/D00001
+kegg://organism/{org_code}       e.g. kegg://organism/hsa
+kegg://search/{database}/{query} e.g. kegg://search/compound/glucose
+```
+
+### 3 Guided Prompts
+
+| Prompt | Arguments | What it does |
+|--------|-----------|--------------|
+| `pathway_enrichment_analysis` | `gene_list`, `organism` | Maps a gene list to KEGG IDs, aggregates pathway associations, identifies enriched pathways |
+| `drug_target_investigation` | `drug_name` | Drug lookup, target identification, pathway mapping, DDI screening |
+| `metabolic_pathway_comparison` | `pathway_id`, `organisms` | Compares gene/compound content of a pathway across species |
+
+---
+
+## Transport options
+
+```bash
+# stdio (default -- for Claude Desktop, Claude Code, uvx)
 kegg-mcp-server
 
 # Streamable HTTP (for web/API deployment)
 kegg-mcp-server --transport streamable-http --host 0.0.0.0 --port 8080
 
 # python -m also works
-python -m kegg_mcp_server --transport stdio
+python -m kegg_mcp_server
 ```
 
 ---
@@ -199,7 +126,7 @@ python -m kegg_mcp_server --transport stdio
 
 ```bash
 git clone https://github.com/Lucas-Servi/kegg-mcp-server-python
-cd kegg-mcp-server
+cd kegg-mcp-server-python
 pip install -e ".[dev]"
 
 # Run tests
@@ -212,30 +139,28 @@ ruff check src/ tests/
 mcp dev kegg-mcp-server
 ```
 
-### Architecture
+### Project structure
 
 ```
 src/kegg_mcp_server/
-├── server.py          # FastMCP instance, lifespan (httpx client + TTL cache), CLI
-├── client.py          # KEGGClient: async wrapper for all 7 KEGG REST operations
-├── cache.py           # TTLCache backed by cachetools
-├── parsers.py         # KEGG flat-file and tab-delimited response parsers
-├── resources.py       # 8 MCP resource templates
-├── prompts.py         # 3 bioinformatics workflow prompts
-├── models/            # Pydantic models for all KEGG entity types
-└── tools/             # 13 tool modules, each with a register(mcp) function
+  server.py       FastMCP instance, lifespan (httpx client + TTL cache), CLI
+  client.py       KEGGClient: async wrapper for all 7 KEGG REST operations
+  cache.py        TTLCache backed by cachetools
+  parsers.py      KEGG flat-file and tab-delimited response parsers
+  resources.py    8 MCP resource templates
+  prompts.py      3 bioinformatics workflow prompts
+  models/         Pydantic models for all KEGG entity types
+  tools/          13 tool modules, each with a register(mcp) function
 ```
 
 ---
 
 ## Acknowledgments
 
-- [KEGG](https://www.kegg.jp) — Kyoto Encyclopedia of Genes and Genomes
-- [Model Context Protocol](https://modelcontextprotocol.io) — Anthropic's open protocol for LLM tool use
-- [FastMCP](https://github.com/jlowin/fastmcp) — Python MCP SDK
-
----
+- [KEGG](https://www.kegg.jp) -- Kyoto Encyclopedia of Genes and Genomes (Kanehisa Laboratories)
+- [Model Context Protocol](https://modelcontextprotocol.io) -- Anthropic's open protocol for LLM tool use
+- Inspired by [Augmented-Nature/KEGG-MCP-Server](https://github.com/Augmented-Nature/KEGG-MCP-Server) (TypeScript)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT -- see [LICENSE](LICENSE).
