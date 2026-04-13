@@ -9,7 +9,7 @@ An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (
 
 Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes TTL caching and batch helpers out of the box. No API key required -- uses the free KEGG REST API.
 
-> **Note:** This is a community project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories.
+> **Note:** This is a community non-official project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories.
 
 ---
 
@@ -154,6 +154,10 @@ src/kegg_mcp_server/
 ```
 
 ---
+
+## Author
+
+Developed by **Lucas Servi** (lucasservi@gmail.com) using [Claude Code](https://claude.ai/code).
 
 ## Acknowledgments
 
