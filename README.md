@@ -157,7 +157,7 @@ src/kegg_mcp_server/
 
 ## Author
 
-Developed by **Lucas Servi** (lucasservi@gmail.com) using [Claude Code](https://claude.ai/code).
+Developed by **Lucas Servi** (lucasservi@gmail.com) at [Elytron Biotech](https://elytron.bio) using [Claude Code](https://claude.ai/code).
 
 ## Acknowledgments
 
