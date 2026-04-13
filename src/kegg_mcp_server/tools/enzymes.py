@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from mcp.server.fastmcp import Context
+
 from kegg_mcp_server.models.common import Reference, SearchResult
 from kegg_mcp_server.models.enzyme import EnzymeInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list
@@ -11,10 +14,17 @@ if TYPE_CHECKING:
 
 def _build(p: dict) -> EnzymeInfo:
     return EnzymeInfo(
-        entry=p.get("entry", ""), name=p.get("name", ""), cls=p.get("cls"),
-        sysname=p.get("sysname"), reaction=p.get("reaction"),
-        substrate=p.get("substrate"), product=p.get("product"), comment=p.get("comment"),
-        pathway=p.get("pathway"), orthology=p.get("orthology"), genes=p.get("gene"),
+        entry=p.get("entry", ""),
+        name=p.get("name", ""),
+        cls=p.get("cls"),
+        sysname=p.get("sysname"),
+        reaction=p.get("reaction"),
+        substrate=p.get("substrate"),
+        product=p.get("product"),
+        comment=p.get("comment"),
+        pathway=p.get("pathway"),
+        orthology=p.get("orthology"),
+        genes=p.get("gene"),
         dblinks=p.get("dblinks"),
         references=[Reference(**r) for r in p.get("references", [])],
     )
@@ -23,7 +33,9 @@ def _build(p: dict) -> EnzymeInfo:
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
-    async def search_enzymes(query: str, max_results: int = 50, ctx: Context = None) -> SearchResult:
+    async def search_enzymes(
+        query: str, max_results: int = 50, ctx: Context = None
+    ) -> SearchResult:
         """Search KEGG enzymes by EC number or name.
 
         Args:
@@ -34,7 +46,13 @@ def register(mcp: FastMCP) -> None:
         raw = await kegg.find("enzyme", query)
         results = parse_tab_list(raw)
         limited = dict(list(results.items())[:max_results])
-        return SearchResult(query=query, database="enzyme", total_found=len(results), returned_count=len(limited), results=limited)
+        return SearchResult(
+            query=query,
+            database="enzyme",
+            total_found=len(results),
+            returned_count=len(limited),
+            results=limited,
+        )
 
     @mcp.tool()
     async def get_enzyme_info(enzyme_id: str, ctx: Context = None) -> EnzymeInfo:

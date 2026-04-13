@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from mcp.server.fastmcp import Context
+
 from kegg_mcp_server.models.common import Reference, SearchResult
 from kegg_mcp_server.models.gene import GeneInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_link_response, parse_tab_list
@@ -11,11 +14,21 @@ if TYPE_CHECKING:
 
 def _build(p: dict) -> GeneInfo:
     return GeneInfo(
-        entry=p.get("entry", ""), name=p.get("name", ""), definition=p.get("definition"),
-        orthology=p.get("orthology"), organism=p.get("organism"), pathway=p.get("pathway"),
-        module=p.get("module"), brite=p.get("brite"), disease=p.get("disease"),
-        network=p.get("network"), position=p.get("position"), motif=p.get("motif"),
-        dblinks=p.get("dblinks"), aaseq=p.get("aaseq"), ntseq=p.get("ntseq"),
+        entry=p.get("entry", ""),
+        name=p.get("name", ""),
+        definition=p.get("definition"),
+        orthology=p.get("orthology"),
+        organism=p.get("organism"),
+        pathway=p.get("pathway"),
+        module=p.get("module"),
+        brite=p.get("brite"),
+        disease=p.get("disease"),
+        network=p.get("network"),
+        position=p.get("position"),
+        motif=p.get("motif"),
+        dblinks=p.get("dblinks"),
+        aaseq=p.get("aaseq"),
+        ntseq=p.get("ntseq"),
         references=[Reference(**r) for r in p.get("references", [])],
     )
 
@@ -23,7 +36,9 @@ def _build(p: dict) -> GeneInfo:
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
-    async def search_genes(query: str, organism_code: str = "hsa", max_results: int = 50, ctx: Context = None) -> SearchResult:
+    async def search_genes(
+        query: str, organism_code: str = "hsa", max_results: int = 50, ctx: Context = None
+    ) -> SearchResult:
         """Search for genes in a KEGG organism database.
 
         Args:
@@ -35,10 +50,18 @@ def register(mcp: FastMCP) -> None:
         raw = await kegg.find(organism_code, query)
         results = parse_tab_list(raw)
         limited = dict(list(results.items())[:max_results])
-        return SearchResult(query=query, database=organism_code, total_found=len(results), returned_count=len(limited), results=limited)
+        return SearchResult(
+            query=query,
+            database=organism_code,
+            total_found=len(results),
+            returned_count=len(limited),
+            results=limited,
+        )
 
     @mcp.tool()
-    async def get_gene_info(gene_id: str, include_sequence: bool = False, ctx: Context = None) -> GeneInfo:
+    async def get_gene_info(
+        gene_id: str, include_sequence: bool = False, ctx: Context = None
+    ) -> GeneInfo:
         """Get detailed information for a KEGG gene entry.
 
         Args:

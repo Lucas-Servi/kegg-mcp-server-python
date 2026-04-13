@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from mcp.server.fastmcp import Context
+
 from kegg_mcp_server.models.brite import BriteInfo
 from kegg_mcp_server.models.common import SearchResult
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list
@@ -23,7 +26,13 @@ def register(mcp: FastMCP) -> None:
         raw = await kegg.find("brite", query)
         results = parse_tab_list(raw)
         limited = dict(list(results.items())[:max_results])
-        return SearchResult(query=query, database="brite", total_found=len(results), returned_count=len(limited), results=limited)
+        return SearchResult(
+            query=query,
+            database="brite",
+            total_found=len(results),
+            returned_count=len(limited),
+            results=limited,
+        )
 
     @mcp.tool()
     async def get_brite_info(brite_id: str, ctx: Context = None) -> BriteInfo:
@@ -36,6 +45,9 @@ def register(mcp: FastMCP) -> None:
         raw = await kegg.get(brite_id)
         p = parse_flat_entry(raw)
         return BriteInfo(
-            entry=p.get("entry", brite_id), name=p.get("name", ""),
-            definition=p.get("definition"), dblinks=p.get("dblinks"), raw_content=raw,
+            entry=p.get("entry", brite_id),
+            name=p.get("name", ""),
+            definition=p.get("definition"),
+            dblinks=p.get("dblinks"),
+            raw_content=raw,
         )

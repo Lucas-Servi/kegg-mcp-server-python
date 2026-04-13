@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from mcp.server.fastmcp import Context
+
 from kegg_mcp_server.models.common import BatchLookupResult, ConversionResult, LinkResult
 from kegg_mcp_server.parsers import parse_conv_response, parse_link_response, parse_multi_flat
 
@@ -32,7 +35,9 @@ def register(mcp: FastMCP) -> None:
         return BatchLookupResult(requested=entry_ids, found=len(all_parsed), entries=all_parsed)
 
     @mcp.tool()
-    async def convert_identifiers(source_db: str, target_db: str, entry_ids: list[str] | None = None, ctx: Context = None) -> ConversionResult:
+    async def convert_identifiers(
+        source_db: str, target_db: str, entry_ids: list[str] | None = None, ctx: Context = None
+    ) -> ConversionResult:
         """Convert KEGG IDs to/from external database identifiers.
 
         Args:
@@ -44,10 +49,14 @@ def register(mcp: FastMCP) -> None:
         kegg = ctx.request_context.lifespan_context.kegg
         source = "+".join(entry_ids[:10]) if entry_ids else source_db
         mappings = parse_conv_response(await kegg.conv(target_db, source))
-        return ConversionResult(source_db=source_db, target_db=target_db, mappings=mappings, count=len(mappings))
+        return ConversionResult(
+            source_db=source_db, target_db=target_db, mappings=mappings, count=len(mappings)
+        )
 
     @mcp.tool()
-    async def find_related_entries(entry_id: str, target_db: str, ctx: Context = None) -> LinkResult:
+    async def find_related_entries(
+        entry_id: str, target_db: str, ctx: Context = None
+    ) -> LinkResult:
         """Find related entries in another KEGG database for a given entry.
 
         Args:

@@ -9,7 +9,6 @@ from kegg_mcp_server.parsers import (
     parse_tab_list,
 )
 
-
 # ---------------------------------------------------------------------------
 # parse_tab_list
 # ---------------------------------------------------------------------------
@@ -88,7 +87,10 @@ class TestParseFlatEntryPathway:
         assert result["entry_type"] == "Compound"
 
     def test_terminator_respected(self) -> None:
-        text = "ENTRY       X00001                      Test\nNAME        TestName\n///\nENTRY       Y00001\n"
+        text = (
+            "ENTRY       X00001                      Test\n"
+            "NAME        TestName\n///\nENTRY       Y00001\n"
+        )
         result = parse_flat_entry(text)
         assert result["entry"] == "X00001"
         assert "Y00001" not in str(result)
@@ -159,7 +161,11 @@ class TestParseFlatEntryCompound:
             assert isinstance(result["mol_weight"], float)
 
     def test_name_list_for_multiple_names(self) -> None:
-        text = "ENTRY       C00002                      Compound\nNAME        ATP;\n            Adenosine 5'-triphosphate\n///"
+        text = (
+            "ENTRY       C00002                      Compound\n"
+            "NAME        ATP;\n"
+            "            Adenosine 5'-triphosphate\n///"
+        )
         result = parse_flat_entry(text)
         name = result["name"]
         # Should be a list since there are two names

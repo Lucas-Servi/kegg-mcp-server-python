@@ -1,7 +1,14 @@
 """Pydantic models for KEGG database entities."""
 
 from kegg_mcp_server.models.brite import BriteInfo
-from kegg_mcp_server.models.common import BatchLookupResult, ConversionResult, LinkResult, ListResult, Reference, SearchResult
+from kegg_mcp_server.models.common import (
+    BatchLookupResult,
+    ConversionResult,
+    LinkResult,
+    ListResult,
+    Reference,
+    SearchResult,
+)
 from kegg_mcp_server.models.compound import CompoundInfo
 from kegg_mcp_server.models.disease import DiseaseInfo
 from kegg_mcp_server.models.drug import DrugInfo, DrugInteraction, DrugInteractionResult

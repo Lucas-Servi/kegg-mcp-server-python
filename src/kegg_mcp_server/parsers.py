@@ -290,11 +290,11 @@ def _parse_references(lines: list[str]) -> list[dict[str, str]]:
         if "PMID:" in line:
             current["pmid"] = line.split("PMID:")[1].strip().rstrip(")")
         elif line.startswith("AUTHORS"):
-            current["authors"] = line[len("AUTHORS"):].strip()
+            current["authors"] = line[len("AUTHORS") :].strip()
         elif line.startswith("TITLE"):
-            current["title"] = line[len("TITLE"):].strip()
+            current["title"] = line[len("TITLE") :].strip()
         elif line.startswith("JOURNAL"):
-            current["journal"] = line[len("JOURNAL"):].strip()
+            current["journal"] = line[len("JOURNAL") :].strip()
         elif line.strip():
             current.setdefault("ref_id", line.strip())
 

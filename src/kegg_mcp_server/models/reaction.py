@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from pydantic import BaseModel
+
 from kegg_mcp_server.models.common import Reference
 
 

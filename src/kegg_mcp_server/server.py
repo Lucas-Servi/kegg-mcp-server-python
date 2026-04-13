@@ -42,9 +42,9 @@ mcp = FastMCP(
 )
 
 # Register tools, resources, and prompts after mcp is created to avoid circular imports
-from kegg_mcp_server.tools import register_all_tools  # noqa: E402
-from kegg_mcp_server.resources import register_resources  # noqa: E402
 from kegg_mcp_server.prompts import register_prompts  # noqa: E402
+from kegg_mcp_server.resources import register_resources  # noqa: E402
+from kegg_mcp_server.tools import register_all_tools  # noqa: E402
 
 register_all_tools(mcp)
 register_resources(mcp)
@@ -53,7 +53,7 @@ register_prompts(mcp)
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="KEGG MCP Server — expose KEGG bioinformatics data via the Model Context Protocol"
+        description="KEGG MCP Server — expose KEGG bioinformatics data via MCP"
     )
     parser.add_argument(
         "--transport",

@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from mcp.server.fastmcp import Context
+
 from kegg_mcp_server.models.common import Reference, SearchResult
 from kegg_mcp_server.models.orthology import KOInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list
@@ -11,9 +14,15 @@ if TYPE_CHECKING:
 
 def _build(p: dict) -> KOInfo:
     return KOInfo(
-        entry=p.get("entry", ""), name=p.get("name", ""), definition=p.get("definition"),
-        pathway=p.get("pathway"), module=p.get("module"), disease=p.get("disease"),
-        network=p.get("network"), brite=p.get("brite"), genes=p.get("gene"),
+        entry=p.get("entry", ""),
+        name=p.get("name", ""),
+        definition=p.get("definition"),
+        pathway=p.get("pathway"),
+        module=p.get("module"),
+        disease=p.get("disease"),
+        network=p.get("network"),
+        brite=p.get("brite"),
+        genes=p.get("gene"),
         dblinks=p.get("dblinks"),
         references=[Reference(**r) for r in p.get("references", [])],
     )
@@ -22,7 +31,9 @@ def _build(p: dict) -> KOInfo:
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
-    async def search_ko_entries(query: str, max_results: int = 50, ctx: Context = None) -> SearchResult:
+    async def search_ko_entries(
+        query: str, max_results: int = 50, ctx: Context = None
+    ) -> SearchResult:
         """Search KEGG Orthology (KO) entries by keyword.
 
         Args:
@@ -33,7 +44,13 @@ def register(mcp: FastMCP) -> None:
         raw = await kegg.find("ko", query)
         results = parse_tab_list(raw)
         limited = dict(list(results.items())[:max_results])
-        return SearchResult(query=query, database="ko", total_found=len(results), returned_count=len(limited), results=limited)
+        return SearchResult(
+            query=query,
+            database="ko",
+            total_found=len(results),
+            returned_count=len(limited),
+            results=limited,
+        )
 
     @mcp.tool()
     async def get_ko_info(ko_id: str, ctx: Context = None) -> KOInfo:

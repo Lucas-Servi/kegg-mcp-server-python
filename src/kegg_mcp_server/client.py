@@ -60,9 +60,7 @@ class KEGGClient:
 
     async def get_batch(self, entry_ids: list[str], option: str | None = None) -> list[str]:
         """Fetch multiple entries, chunking into groups of 10 and running concurrently."""
-        chunks = [
-            entry_ids[i : i + _BATCH_SIZE] for i in range(0, len(entry_ids), _BATCH_SIZE)
-        ]
+        chunks = [entry_ids[i : i + _BATCH_SIZE] for i in range(0, len(entry_ids), _BATCH_SIZE)]
         tasks = [self.get("+".join(chunk), option) for chunk in chunks]
         return list(await asyncio.gather(*tasks))
 

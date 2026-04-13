@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from mcp.server.fastmcp import Context
+
 from kegg_mcp_server.models.common import Reference, SearchResult
 from kegg_mcp_server.models.drug import DrugInfo, DrugInteraction, DrugInteractionResult
 from kegg_mcp_server.parsers import parse_ddi_response, parse_flat_entry, parse_tab_list
@@ -11,11 +14,19 @@ if TYPE_CHECKING:
 
 def _build(p: dict) -> DrugInfo:
     return DrugInfo(
-        entry=p.get("entry", ""), name=p.get("name", ""), formula=p.get("formula"),
-        exact_mass=p.get("exact_mass"), mol_weight=p.get("mol_weight"),
-        remark=p.get("remark"), comment=p.get("comment"), cls=p.get("cls"),
-        pathway=p.get("pathway"), target=p.get("target"), network=p.get("network"),
-        interaction=p.get("interaction"), dblinks=p.get("dblinks"),
+        entry=p.get("entry", ""),
+        name=p.get("name", ""),
+        formula=p.get("formula"),
+        exact_mass=p.get("exact_mass"),
+        mol_weight=p.get("mol_weight"),
+        remark=p.get("remark"),
+        comment=p.get("comment"),
+        cls=p.get("cls"),
+        pathway=p.get("pathway"),
+        target=p.get("target"),
+        network=p.get("network"),
+        interaction=p.get("interaction"),
+        dblinks=p.get("dblinks"),
         references=[Reference(**r) for r in p.get("references", [])],
     )
 
@@ -23,7 +34,9 @@ def _build(p: dict) -> DrugInfo:
 def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
-    async def search_drugs(query: str, search_type: str = "name", max_results: int = 50, ctx: Context = None) -> SearchResult:
+    async def search_drugs(
+        query: str, search_type: str = "name", max_results: int = 50, ctx: Context = None
+    ) -> SearchResult:
         """Search KEGG drugs by name, formula, or molecular weight.
 
         Args:
@@ -36,7 +49,13 @@ def register(mcp: FastMCP) -> None:
         raw = await kegg.find("drug", query, option=option)
         results = parse_tab_list(raw)
         limited = dict(list(results.items())[:max_results])
-        return SearchResult(query=query, database="drug", total_found=len(results), returned_count=len(limited), results=limited)
+        return SearchResult(
+            query=query,
+            database="drug",
+            total_found=len(results),
+            returned_count=len(limited),
+            results=limited,
+        )
 
     @mcp.tool()
     async def get_drug_info(drug_id: str, ctx: Context = None) -> DrugInfo:
@@ -62,4 +81,6 @@ def register(mcp: FastMCP) -> None:
             DrugInteraction(drug1=d["drug1"], drug2=d["drug2"], interaction=d["interaction"])
             for d in parse_ddi_response(raw)
         ]
-        return DrugInteractionResult(drug_ids=drug_ids.split("+"), interactions=interactions, count=len(interactions))
+        return DrugInteractionResult(
+            drug_ids=drug_ids.split("+"), interactions=interactions, count=len(interactions)
+        )

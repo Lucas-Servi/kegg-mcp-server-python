@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from mcp.server.fastmcp import Context
+
 from kegg_mcp_server.models.common import ListResult
 from kegg_mcp_server.models.organism import DatabaseInfo
-from kegg_mcp_server.parsers import parse_tab_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
