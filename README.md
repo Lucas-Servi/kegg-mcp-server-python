@@ -161,9 +161,9 @@ Developed by **Lucas Servi** (lucasservi@gmail.com) using [Claude Code](https://
 
 ## Acknowledgments
 
+- Based on [Augmented-Nature/KEGG-MCP-Server](https://github.com/Augmented-Nature/KEGG-MCP-Server) -- the original TypeScript implementation that served as the foundation for this Python rewrite
 - [KEGG](https://www.kegg.jp) -- Kyoto Encyclopedia of Genes and Genomes (Kanehisa Laboratories)
 - [Model Context Protocol](https://modelcontextprotocol.io) -- Anthropic's open protocol for LLM tool use
-- Inspired by [Augmented-Nature/KEGG-MCP-Server](https://github.com/Augmented-Nature/KEGG-MCP-Server) (TypeScript)
 
 ## License
 
