@@ -1,0 +1,451 @@
+ENTRY       1956              CDS       T01001
+SYMBOL      EGFR, ERBB, ERBB1, ERRP, HER1, NISBD2, NNCIS, PIG61, mENA
+NAME        (RefSeq) epidermal growth factor receptor isoform a precursor
+ORTHOLOGY   K04361  epidermal growth factor receptor [EC:2.7.10.1]
+ORGANISM    hsa  Homo sapiens (human)
+PATHWAY     hsa01521  EGFR tyrosine kinase inhibitor resistance
+            hsa01522  Endocrine resistance
+            hsa03272  Virion - Hepatitis viruses
+            hsa04010  MAPK signaling pathway
+            hsa04012  ErbB signaling pathway
+            hsa04014  Ras signaling pathway
+            hsa04015  Rap1 signaling pathway
+            hsa04020  Calcium signaling pathway
+            hsa04066  HIF-1 signaling pathway
+            hsa04068  FoxO signaling pathway
+            hsa04072  Phospholipase D signaling pathway
+            hsa04144  Endocytosis
+            hsa04151  PI3K-Akt signaling pathway
+            hsa04510  Focal adhesion
+            hsa04518  Integrin signaling
+            hsa04519  Cadherin signaling
+            hsa04520  Adherens junction
+            hsa04540  Gap junction
+            hsa04630  JAK-STAT signaling pathway
+            hsa04810  Regulation of actin cytoskeleton
+            hsa04912  GnRH signaling pathway
+            hsa04915  Estrogen signaling pathway
+            hsa04921  Oxytocin signaling pathway
+            hsa04926  Relaxin signaling pathway
+            hsa04928  Parathyroid hormone synthesis, secretion and action
+            hsa04934  Cushing syndrome
+            hsa05120  Epithelial cell signaling in Helicobacter pylori infection
+            hsa05131  Shigellosis
+            hsa05160  Hepatitis C
+            hsa05163  Human cytomegalovirus infection
+            hsa05165  Human papillomavirus infection
+            hsa05171  Coronavirus disease - COVID-19
+            hsa05200  Pathways in cancer
+            hsa05205  Proteoglycans in cancer
+            hsa05206  MicroRNAs in cancer
+            hsa05207  Chemical carcinogenesis - receptor activation
+            hsa05208  Chemical carcinogenesis - reactive oxygen species
+            hsa05210  Colorectal cancer
+            hsa05212  Pancreatic cancer
+            hsa05213  Endometrial cancer
+            hsa05214  Glioma
+            hsa05215  Prostate cancer
+            hsa05218  Melanoma
+            hsa05219  Bladder cancer
+            hsa05223  Non-small cell lung cancer
+            hsa05224  Breast cancer
+            hsa05225  Hepatocellular carcinoma
+            hsa05226  Gastric cancer
+            hsa05230  Central carbon metabolism in cancer
+            hsa05231  Choline metabolism in cancer
+            hsa05235  PD-L1 expression and PD-1 checkpoint pathway in cancer
+NETWORK     nt06160  Human T-cell leukemia virus 1 (HTLV-1)
+            nt06162  Hepatitis B virus (HBV)
+            nt06163  Hepatitis C virus (HCV)
+            nt06164  Kaposi sarcoma-associated herpesvirus (KSHV)
+            nt06165  Epstein-Barr virus (EBV)
+            nt06166  Human papillomavirus (HPV)
+            nt06167  Human cytomegalovirus (HCMV)
+            nt06170  Influenza A virus (IAV)
+            nt06180  Pathogenic Escherichia coli
+            nt06182  Shigella
+            nt06210  ERK signaling (cancer)
+            nt06213  Other RAS signaling (cancer)
+            nt06214  PI3K signaling (cancer)
+            nt06219  JAK-STAT signaling (cancer)
+            nt06220  Calcium signaling (cancer)
+            nt06260  Colorectal cancer
+            nt06261  Gastric cancer
+            nt06262  Pancreatic cancer
+            nt06263  Hepatocellular carcinoma
+            nt06265  Bladder cancer
+            nt06266  Non-small cell lung cancer
+            nt06268  Melanoma
+            nt06270  Breast cancer
+            nt06271  Endometrial cancer
+            nt06273  Glioma
+            nt06274  Thyroid cancer
+            nt06276  Chronic myeloid leukemia
+            nt06310  CRH-ACTH-cortisol signaling
+            nt06360  Cushing syndrome
+            nt06526  MAPK signaling
+            nt06528  Calcium signaling
+            nt06530  PI3K signaling
+  ELEMENT   N00001  EGF-EGFR-RAS-ERK signaling pathway
+            N00006  Amplified EGFR to RAS-ERK signaling pathway
+            N00014  Mutation-activated EGFR to RAS-ERK signaling pathway
+            N00021  EGF-ERBB2-RAS-ERK signaling pathway
+            N00022  ERBB2-overexpression to RAS-ERK signaling pathway
+            N00023  EGF-EGFR-PLCG-ERK signaling pathway
+            N00024  Mutation-activated EGFR to PLCG-ERK signaling pathway
+            N00026  EGF-EGFR-PLCG-CAMK signaling pathway
+            N00027  Amplified EGFR to PLCG-CAMK signaling pathway
+            N00030  EGF-EGFR-RAS-PI3K signaling pathway
+            N00033  EGF-EGFR-PI3K signaling pathway
+            N00034  ERBB2-overexpression to PI3K signaling pathway
+            N00035  Amplified EGFR to PI3K signaling pathway
+            N00036  Mutation-activated EGFR to PI3K signaling pathway
+            N00041  EGFR-overexpression to RAS-ERK signaling pathway
+            N00042  EGFR-overexpression to PI3K signaling pathway
+            N00094  EGF-Jak-STAT signaling pathway
+            N00095  ERBB2-overexpression to EGF-Jak-STAT signaling pathway
+            N00096  EGF-EGFR-RAS-RASSF1 signaling pathway
+            N00103  EGF-EGFR-RAS-RalGDS signaling pathway
+            N00147  EGF-EGFR-PLCG-calcineurin signaling pathway
+            N00227  TGFA-EGFR-PLCG-PKC signaling pathway
+            N00228  TGFA-overexpression to PLCG-PKC signaling pathway
+            N00229  TGFA-EGFR-RAS-ERK signaling pathway
+            N00230  TGFA-overexpression to RAS-ERK signaling pathway
+            N00231  TGFA-EGFR-PI3K signaling pathway
+            N00232  TGFA-overexpression to PI3K signaling pathway
+            N00252  Amplified ERBB2 to RAS-ERK signaling pathway
+            N00253  Amplified ERBB2 to PI3K signaling pathway
+            N00276  EGF-overexpression to RAS-ERK signaling pathway
+            N00277  EREG-EGFR-RAS-ERK signaling pathway
+            N00278  EREG-overexpression to RAS-ERK signaling pathway
+            N00279  AREG-EGFR-RAS-ERK signaling pathway
+            N00280  AREG-overexpression to RAS-ERK signaling pathway
+            N00281  EGF-overexpression to PI3K signaling pathway
+            N00282  EREG-EGFR-PI3K signaling pathway
+            N00283  EREG-overexpression to PI3K signaling pathway
+            N00284  AREG-EGFR-PI3K signaling pathway
+            N00285  AREG-overexpression to PI3K signaling pathway
+            N00318  EGFR-ERK-ACTH signaling pathway
+            N00319  Mutation-activated USP8 to EGFR-ERK-ACTH signaling pathway
+            N00366  HPV E5 to EGFR-PI3K signaling pathway
+            N00367  HPV E5 to EGFR-RAS-ERK signaling pathway
+            N00390  EGF-EGFR-PI3K-NFKB signaling pathway
+            N00391  HCMV gB to EGFR-PI3K-NFKB signaling pathway
+            N00392  HCMV gB to EGFR-RAS-ERK signaling pathway
+            N00513  Mutation-activated EGFR to RAS-ERK signaling pathway
+            N00514  Mutation-activated EGFR to PI3K signaling pathway
+            N00542  EGF-EGFR-RAS-JNK signaling pathway
+            N01078  EGF-EGFR-Actin signaling pathway
+            N01354  BPA to RAS-ERK signaling pathway
+            N01355  Arsenic to PI3K signaling pathway
+            N01592  GF-RTK-RAS-ERK signaling pathway
+            N01599  Regulation of GF-RTK-RAS-ERK signaling, ubiquitination of RTK by CBL
+            N01641  RTK-PLCG-ITPR signaling pathway
+            N01656  GF-RTK-PI3K signaling pathway
+            N01658  GF-RTK-RAS-PI3K signaling pathway
+DISEASE     H00014  Non-small cell lung cancer
+            H00016  Oral cancer
+            H00017  Esophageal cancer
+            H00022  Bladder cancer
+            H00028  Choriocarcinoma
+            H00030  Cervical cancer
+            H00031  Breast cancer
+            H00042  Glioma
+            H00055  Laryngeal cancer
+            H01508  Salivary gland cancer
+            H01559  Oropharyngeal cancer
+            H02467  Neonatal inflammatory skin and bowel disease
+DRUG_TARGET Afatinib (DG00717): D09724 D09733<JP/US>
+            Amivantamab: D11894<JP/US> D13229<JP/US>
+            Aumolertinib (DG03209): D12258 D12259
+            Bafisontamab: D12809
+            Canertinib dihydrochloride: D03350
+            Cetuximab: D03455<JP/US>
+            Cetuximab sarotalocan: D11803
+            Cetuximab sarotalocan sodium: D11805<JP>
+            Dacomitinib (DG01793): D09883 D10514<JP/US>
+            Duligotuzumab: D11750
+            Erlotinib (DG00711): D04023<JP/US> D07907
+            Ficerafusp alfa: D12768
+            Firmonertinib (DG03322): D12956 D12957
+            Gefitinib: D01977<JP/US>
+            Icotinib: D11251
+            Imgatuzumab: D10439
+            Izalontamab: D13052
+            Izalontamab brengitecan: D13053
+            Lapatinib (DG00715): D04024<JP/US> D08108
+            Lazertinib (DG03205): D11980 D12245<JP/US>
+            Lifirafenib (DG03009): D11410 D11411
+            Marlotamig: D12709
+            Masoprocol: D04862
+            Mavelertinib: D11368
+            Mifanertinib: D13235
+            Mobocertinib (DG03148): D11969 D12001
+            Modotuximab: D11125
+            Naquotinib (DG03112): D10886 D10958
+            Nazartinib (DG03015): D11430 D11434
+            Necitumumab: D10018<JP/US>
+            Neratinib (DG02303): D08950 D10898<US>
+            Olmutinib (DG02916): D10859 D11115
+            Osimertinib: D10766<JP/US>
+            Pamvatamig: D13156
+            Panitumumab: D05350<JP/US>
+            Pebezertinib: D12859
+            Pelitinib: D05399
+            Petosemtamab: D12416
+            Poziotinib (DG03196): D12229 D12230
+            Rindopepimut: D09660
+            Rociletinib: D10858
+            Serclutamab: D11872
+            Serclutamab talirine: D11874
+            Sevabertinib (DG03348): D13098 D13116<US>
+            Sunvozertinib: D12506
+            Tesevatinib (DG03101): D11772 D11773
+            Tigozertinib: D12730
+            Tilatamig: D13066
+            Tilatamig samrotecan: D13067
+            Tuxobertinib: D12457
+            Vandetanib: D06407<JP/US>
+            Varlitinib (DG01357): D09689 D09690
+            Zalutumumab: D10031
+            Zipalertinib: D13062
+BRITE       KEGG Orthology (KO) [BR:hsa00001]
+             09120 Genetic Information Processing
+              09125 Information processing in viruses
+               03272 Virion - Hepatitis viruses
+                1956 (EGFR)
+             09130 Environmental Information Processing
+              09132 Signal transduction
+               04010 MAPK signaling pathway
+                1956 (EGFR)
+               04012 ErbB signaling pathway
+                1956 (EGFR)
+               04014 Ras signaling pathway
+                1956 (EGFR)
+               04015 Rap1 signaling pathway
+                1956 (EGFR)
+               04630 JAK-STAT signaling pathway
+                1956 (EGFR)
+               04066 HIF-1 signaling pathway
+                1956 (EGFR)
+               04068 FoxO signaling pathway
+                1956 (EGFR)
+               04020 Calcium signaling pathway
+                1956 (EGFR)
+               04072 Phospholipase D signaling pathway
+                1956 (EGFR)
+               04151 PI3K-Akt signaling pathway
+                1956 (EGFR)
+              09133 Signaling molecules and interaction
+               04518 Integrin signaling
+                1956 (EGFR)
+               04519 Cadherin signaling
+                1956 (EGFR)
+             09140 Cellular Processes
+              09141 Transport and catabolism
+               04144 Endocytosis
+                1956 (EGFR)
+              09144 Cellular community - eukaryotes
+               04510 Focal adhesion
+                1956 (EGFR)
+               04520 Adherens junction
+                1956 (EGFR)
+               04540 Gap junction
+                1956 (EGFR)
+              09142 Cell motility
+               04810 Regulation of actin cytoskeleton
+                1956 (EGFR)
+             09150 Organismal Systems
+              09152 Endocrine system
+               04912 GnRH signaling pathway
+                1956 (EGFR)
+               04915 Estrogen signaling pathway
+                1956 (EGFR)
+               04921 Oxytocin signaling pathway
+                1956 (EGFR)
+               04926 Relaxin signaling pathway
+                1956 (EGFR)
+               04928 Parathyroid hormone synthesis, secretion and action
+                1956 (EGFR)
+             09160 Human Diseases
+              09161 Cancer: overview
+               05200 Pathways in cancer
+                1956 (EGFR)
+               05206 MicroRNAs in cancer
+                1956 (EGFR)
+               05205 Proteoglycans in cancer
+                1956 (EGFR)
+               05207 Chemical carcinogenesis - receptor activation
+                1956 (EGFR)
+               05208 Chemical carcinogenesis - reactive oxygen species
+                1956 (EGFR)
+               05230 Central carbon metabolism in cancer
+                1956 (EGFR)
+               05231 Choline metabolism in cancer
+                1956 (EGFR)
+               05235 PD-L1 expression and PD-1 checkpoint pathway in cancer
+                1956 (EGFR)
+              09162 Cancer: specific types
+               05210 Colorectal cancer
+                1956 (EGFR)
+               05212 Pancreatic cancer
+                1956 (EGFR)
+               05225 Hepatocellular carcinoma
+                1956 (EGFR)
+               05226 Gastric cancer
+                1956 (EGFR)
+               05214 Glioma
+                1956 (EGFR)
+               05218 Melanoma
+                1956 (EGFR)
+               05219 Bladder cancer
+                1956 (EGFR)
+               05215 Prostate cancer
+                1956 (EGFR)
+               05213 Endometrial cancer
+                1956 (EGFR)
+               05224 Breast cancer
+                1956 (EGFR)
+               05223 Non-small cell lung cancer
+                1956 (EGFR)
+              09172 Infectious disease: viral
+               05160 Hepatitis C
+                1956 (EGFR)
+               05171 Coronavirus disease - COVID-19
+                1956 (EGFR)
+               05163 Human cytomegalovirus infection
+                1956 (EGFR)
+               05165 Human papillomavirus infection
+                1956 (EGFR)
+              09171 Infectious disease: bacterial
+               05120 Epithelial cell signaling in Helicobacter pylori infection
+                1956 (EGFR)
+               05131 Shigellosis
+                1956 (EGFR)
+              09167 Endocrine and metabolic disease
+               04934 Cushing syndrome
+                1956 (EGFR)
+              09176 Drug resistance: antineoplastic
+               01521 EGFR tyrosine kinase inhibitor resistance
+                1956 (EGFR)
+               01522 Endocrine resistance
+                1956 (EGFR)
+             09180 Brite Hierarchies
+              09181 Protein families: metabolism
+               01001 Protein kinases [BR:hsa01001]
+                1956 (EGFR)
+              09183 Protein families: signaling and cellular processes
+               04147 Exosome [BR:hsa04147]
+                1956 (EGFR)
+            Enzymes [BR:hsa01000]
+             2. Transferases
+              2.7  Transferring phosphorus-containing groups
+               2.7.10  Protein-tyrosine kinases
+                2.7.10.1  receptor protein-tyrosine kinase
+                 1956 (EGFR)
+            Protein kinases [BR:hsa01001]
+             Receptor tyrosine kinases (RTK)
+              EGFR family [OT]
+               1956 (EGFR)
+            Exosome [BR:hsa04147]
+             Exosomal proteins
+              Exosomal proteins of colorectal cancer cells
+               1956 (EGFR)
+              Exosomal proteins of pancreatic cancer cells
+               1956 (EGFR)
+              Exosomal proteins of bladder cancer cells
+               1956 (EGFR)
+POSITION    7:55019017..55211628
+MOTIF       Pfam: PK_Tyr_Ser-Thr Recep_L_domain GF_recep_IV Pkinase Furin-like TM_ErbB1 Kinase-like ABC1 GAPT
+DBLINKS     NCBI-GeneID: 1956
+            NCBI-ProteinID: NP_005219
+            OMIM: 131550
+            HGNC: 3236
+            Ensembl: ENSP00000275493.2
+            UniProt: P00533 Q504U8 F2YGG7
+STRUCTURE   PDB
+AASEQ       1210
+            MRPSGTAGAALLALLAALCPASRALEEKKVCQGTSNKLTQLGTFEDHFLSLQRMFNNCEV
+            VLGNLEITYVQRNYDLSFLKTIQEVAGYVLIALNTVERIPLENLQIIRGNMYYENSYALA
+            VLSNYDANKTGLKELPMRNLQEILHGAVRFSNNPALCNVESIQWRDIVSSDFLSNMSMDF
+            QNHLGSCQKCDPSCPNGSCWGAGEENCQKLTKIICAQQCSGRCRGKSPSDCCHNQCAAGC
+            TGPRESDCLVCRKFRDEATCKDTCPPLMLYNPTTYQMDVNPEGKYSFGATCVKKCPRNYV
+            VTDHGSCVRACGADSYEMEEDGVRKCKKCEGPCRKVCNGIGIGEFKDSLSINATNIKHFK
+            NCTSISGDLHILPVAFRGDSFTHTPPLDPQELDILKTVKEITGFLLIQAWPENRTDLHAF
+            ENLEIIRGRTKQHGQFSLAVVSLNITSLGLRSLKEISDGDVIISGNKNLCYANTINWKKL
+            FGTSGQKTKIISNRGENSCKATGQVCHALCSPEGCWGPEPRDCVSCRNVSRGRECVDKCN
+            LLEGEPREFVENSECIQCHPECLPQAMNITCTGRGPDNCIQCAHYIDGPHCVKTCPAGVM
+            GENNTLVWKYADAGHVCHLCHPNCTYGCTGPGLEGCPTNGPKIPSIATGMVGALLLLLVV
+            ALGIGLFMRRRHIVRKRTLRRLLQERELVEPLTPSGEAPNQALLRILKETEFKKIKVLGS
+            GAFGTVYKGLWIPEGEKVKIPVAIKELREATSPKANKEILDEAYVMASVDNPHVCRLLGI
+            CLTSTVQLITQLMPFGCLLDYVREHKDNIGSQYLLNWCVQIAKGMNYLEDRRLVHRDLAA
+            RNVLVKTPQHVKITDFGLAKLLGAEEKEYHAEGGKVPIKWMALESILHRIYTHQSDVWSY
+            GVTVWELMTFGSKPYDGIPASEISSILEKGERLPQPPICTIDVYMIMVKCWMIDADSRPK
+            FRELIIEFSKMARDPQRYLVIQGDERMHLPSPTDSNFYRALMDEEDMDDVVDADEYLIPQ
+            QGFFSSPSTSRTPLLSSLSATSNNSTVACIDRNGLQSCPIKEDSFLQRYSSDPTGALTED
+            SIDDTFLPVPEYINQSVPKRPAGSVQNPVYHNQPLNPAPSRDPHYQDPHSTAVGNPEYLN
+            TVQPTCVNSTFDSPAHWAQKGSHQISLDNPDYQQDFFPKEAKPNGIFKGSTAENAEYLRV
+            APQSSEFIGA
+NTSEQ       3633
+            atgcgaccctccgggacggccggggcagcgctcctggcgctgctggctgcgctctgcccg
+            gcgagtcgggctctggaggaaaagaaagtttgccaaggcacgagtaacaagctcacgcag
+            ttgggcacttttgaagatcattttctcagcctccagaggatgttcaataactgtgaggtg
+            gtccttgggaatttggaaattacctatgtgcagaggaattatgatctttccttcttaaag
+            accatccaggaggtggctggttatgtcctcattgccctcaacacagtggagcgaattcct
+            ttggaaaacctgcagatcatcagaggaaatatgtactacgaaaattcctatgccttagca
+            gtcttatctaactatgatgcaaataaaaccggactgaaggagctgcccatgagaaattta
+            caggaaatcctgcatggcgccgtgcggttcagcaacaaccctgccctgtgcaacgtggag
+            agcatccagtggcgggacatagtcagcagtgactttctcagcaacatgtcgatggacttc
+            cagaaccacctgggcagctgccaaaagtgtgatccaagctgtcccaatgggagctgctgg
+            ggtgcaggagaggagaactgccagaaactgaccaaaatcatctgtgcccagcagtgctcc
+            gggcgctgccgtggcaagtcccccagtgactgctgccacaaccagtgtgctgcaggctgc
+            acaggcccccgggagagcgactgcctggtctgccgcaaattccgagacgaagccacgtgc
+            aaggacacctgccccccactcatgctctacaaccccaccacgtaccagatggatgtgaac
+            cccgagggcaaatacagctttggtgccacctgcgtgaagaagtgtccccgtaattatgtg
+            gtgacagatcacggctcgtgcgtccgagcctgtggggccgacagctatgagatggaggaa
+            gacggcgtccgcaagtgtaagaagtgcgaagggccttgccgcaaagtgtgtaacggaata
+            ggtattggtgaatttaaagactcactctccataaatgctacgaatattaaacacttcaaa
+            aactgcacctccatcagtggcgatctccacatcctgccggtggcatttaggggtgactcc
+            ttcacacatactcctcctctggatccacaggaactggatattctgaaaaccgtaaaggaa
+            atcacagggtttttgctgattcaggcttggcctgaaaacaggacggacctccatgccttt
+            gagaacctagaaatcatacgcggcaggaccaagcaacatggtcagttttctcttgcagtc
+            gtcagcctgaacataacatccttgggattacgctccctcaaggagataagtgatggagat
+            gtgataatttcaggaaacaaaaatttgtgctatgcaaatacaataaactggaaaaaactg
+            tttgggacctccggtcagaaaaccaaaattataagcaacagaggtgaaaacagctgcaag
+            gccacaggccaggtctgccatgccttgtgctcccccgagggctgctggggcccggagccc
+            agggactgcgtctcttgccggaatgtcagccgaggcagggaatgcgtggacaagtgcaac
+            cttctggagggtgagccaagggagtttgtggagaactctgagtgcatacagtgccaccca
+            gagtgcctgcctcaggccatgaacatcacctgcacaggacggggaccagacaactgtatc
+            cagtgtgcccactacattgacggcccccactgcgtcaagacctgcccggcaggagtcatg
+            ggagaaaacaacaccctggtctggaagtacgcagacgccggccatgtgtgccacctgtgc
+            catccaaactgcacctacggatgcactgggccaggtcttgaaggctgtccaacgaatggg
+            cctaagatcccgtccatcgccactgggatggtgggggccctcctcttgctgctggtggtg
+            gccctggggatcggcctcttcatgcgaaggcgccacatcgttcggaagcgcacgctgcgg
+            aggctgctgcaggagagggagcttgtggagcctcttacacccagtggagaagctcccaac
+            caagctctcttgaggatcttgaaggaaactgaattcaaaaagatcaaagtgctgggctcc
+            ggtgcgttcggcacggtgtataagggactctggatcccagaaggtgagaaagttaaaatt
+            cccgtcgctatcaaggaattaagagaagcaacatctccgaaagccaacaaggaaatcctc
+            gatgaagcctacgtgatggccagcgtggacaacccccacgtgtgccgcctgctgggcatc
+            tgcctcacctccaccgtgcagctcatcacgcagctcatgcccttcggctgcctcctggac
+            tatgtccgggaacacaaagacaatattggctcccagtacctgctcaactggtgtgtgcag
+            atcgcaaagggcatgaactacttggaggaccgtcgcttggtgcaccgcgacctggcagcc
+            aggaacgtactggtgaaaacaccgcagcatgtcaagatcacagattttgggctggccaaa
+            ctgctgggtgcggaagagaaagaataccatgcagaaggaggcaaagtgcctatcaagtgg
+            atggcattggaatcaattttacacagaatctatacccaccagagtgatgtctggagctac
+            ggggtgactgtttgggagttgatgacctttggatccaagccatatgacggaatccctgcc
+            agcgagatctcctccatcctggagaaaggagaacgcctccctcagccacccatatgtacc
+            atcgatgtctacatgatcatggtcaagtgctggatgatagacgcagatagtcgcccaaag
+            ttccgtgagttgatcatcgaattctccaaaatggcccgagacccccagcgctaccttgtc
+            attcagggggatgaaagaatgcatttgccaagtcctacagactccaacttctaccgtgcc
+            ctgatggatgaagaagacatggacgacgtggtggatgccgacgagtacctcatcccacag
+            cagggcttcttcagcagcccctccacgtcacggactcccctcctgagctctctgagtgca
+            accagcaacaattccaccgtggcttgcattgatagaaatgggctgcaaagctgtcccatc
+            aaggaagacagcttcttgcagcgatacagctcagaccccacaggcgccttgactgaggac
+            agcatagacgacaccttcctcccagtgcctgaatacataaaccagtccgttcccaaaagg
+            cccgctggctctgtgcagaatcctgtctatcacaatcagcctctgaaccccgcgcccagc
+            agagacccacactaccaggacccccacagcactgcagtgggcaaccccgagtatctcaac
+            actgtccagcccacctgtgtcaacagcacattcgacagccctgcccactgggcccagaaa
+            ggcagccaccaaattagcctggacaaccctgactaccagcaggacttctttcccaaggaa
+            gccaagccaaatggcatctttaagggctccacagctgaaaatgcagaatacctaagggtc
+            gcgccacaaagcagtgaatttattggagcatga
+///
