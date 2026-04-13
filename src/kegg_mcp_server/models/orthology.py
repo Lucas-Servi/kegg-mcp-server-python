@@ -13,7 +13,8 @@ class KOInfo(BaseModel):
     module: dict[str, str] | None = None
     disease: dict[str, str] | None = None
     network: dict[str, str] | None = None
-    brite: dict[str, str] | None = None
+    # KEGG BRITE can be either a structured map or a free-text hierarchy block.
+    brite: dict[str, str] | str | None = None
     genes: dict[str, str] | None = None
     dblinks: dict[str, list[str]] | None = None
     references: list[Reference] | None = None

@@ -13,7 +13,8 @@ class GeneInfo(BaseModel):
     organism: str | None = None
     pathway: dict[str, str] | None = None
     module: dict[str, str] | None = None
-    brite: dict[str, str] | None = None
+    # KEGG BRITE can be either a structured map or a free-text hierarchy block.
+    brite: dict[str, str] | str | None = None
     disease: dict[str, str] | None = None
     network: dict[str, str] | None = None
     position: str | None = None

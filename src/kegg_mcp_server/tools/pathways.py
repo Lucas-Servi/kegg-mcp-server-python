@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from mcp.server.fastmcp import Context
@@ -10,6 +11,19 @@ from kegg_mcp_server.parsers import parse_flat_entry, parse_link_response, parse
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
+
+
+def _filter_pathways_by_query(pathways: dict[str, str], query: str) -> dict[str, str]:
+    """Filter pathways by query tokens (case-insensitive) across ID + description."""
+    terms = [t.lower() for t in re.split(r"\s+", query.strip()) if t]
+    if not terms:
+        return pathways
+    filtered: dict[str, str] = {}
+    for pathway_id, description in pathways.items():
+        haystack = f"{pathway_id} {description}".lower()
+        if all(term in haystack for term in terms):
+            filtered[pathway_id] = description
+    return filtered
 
 
 def _build(p: dict) -> PathwayInfo:
@@ -46,9 +60,17 @@ def register(mcp: FastMCP) -> None:
             max_results: Maximum number of results to return.
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        db = f"pathway/{organism_code}" if organism_code != "map" else "pathway"
-        raw = await kegg.find(db, query)
-        results = parse_tab_list(raw)
+        normalized_organism = organism_code.strip().lower()
+
+        if normalized_organism == "map":
+            db = "pathway"
+            raw = await kegg.find(db, query)
+            results = parse_tab_list(raw)
+        else:
+            db = f"pathway/{normalized_organism}"
+            raw = await kegg.list(db)
+            results = _filter_pathways_by_query(parse_tab_list(raw), query)
+
         limited = dict(list(results.items())[:max_results])
         return SearchResult(
             query=query,
