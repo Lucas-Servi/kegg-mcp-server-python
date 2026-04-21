@@ -20,6 +20,13 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 
+def _ensure_path_prefix(pathway_id: str) -> str:
+    """Ensure pathway ID has the 'path:' prefix required by KEGG link/get APIs."""
+    if not pathway_id.startswith("path:"):
+        return f"path:{pathway_id}"
+    return pathway_id
+
+
 def _filter_pathways_by_query(pathways: dict[str, str], query: str) -> dict[str, str]:
     """Filter pathways by query tokens (case-insensitive) across ID + description."""
     terms = [t.lower() for t in re.split(r"\s+", query.strip()) if t]
@@ -110,7 +117,7 @@ def register(mcp: FastMCP) -> None:
             pathway_id: KEGG pathway ID (e.g. 'hsa00010').
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        pairs = parse_link_response(await kegg.link("genes", pathway_id))
+        pairs = parse_link_response(await kegg.link("genes", _ensure_path_prefix(pathway_id)))
         return PathwayLinks(pathway_id=pathway_id, linked_db="genes", pairs=pairs, count=len(pairs))
 
     @mcp.tool(annotations=READ_ONLY)
@@ -124,7 +131,7 @@ def register(mcp: FastMCP) -> None:
             pathway_id: KEGG pathway ID (e.g. 'map00010').
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        pairs = parse_link_response(await kegg.link("compound", pathway_id))
+        pairs = parse_link_response(await kegg.link("compound", _ensure_path_prefix(pathway_id)))
         return PathwayLinks(
             pathway_id=pathway_id, linked_db="compound", pairs=pairs, count=len(pairs)
         )
@@ -140,7 +147,7 @@ def register(mcp: FastMCP) -> None:
             pathway_id: KEGG pathway ID (e.g. 'hsa00010').
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        pairs = parse_link_response(await kegg.link("reaction", pathway_id))
+        pairs = parse_link_response(await kegg.link("reaction", _ensure_path_prefix(pathway_id)))
         return PathwayLinks(
             pathway_id=pathway_id, linked_db="reaction", pairs=pairs, count=len(pairs)
         )

@@ -21,11 +21,13 @@ class FakeMCP:
 
 
 class FakeKEGG:
-    def __init__(self, find_response: str = "", list_response: str = "") -> None:
+    def __init__(self, find_response: str = "", list_response: str = "", link_response: str = "") -> None:
         self.find_response = find_response
         self.list_response = list_response
+        self.link_response = link_response
         self.find_calls: list[tuple[str, str]] = []
         self.list_calls: list[str] = []
+        self.link_calls: list[tuple[str, str]] = []
 
     async def find(self, database: str, query: str) -> str:
         self.find_calls.append((database, query))
@@ -34,6 +36,10 @@ class FakeKEGG:
     async def list(self, database: str) -> str:
         self.list_calls.append(database)
         return self.list_response
+
+    async def link(self, target_db: str, source: str) -> str:
+        self.link_calls.append((target_db, source))
+        return self.link_response
 
 
 def _make_ctx(fake_kegg: FakeKEGG):
@@ -46,6 +52,16 @@ def _get_search_pathways_tool():
     fake_mcp = FakeMCP()
     pathways.register(fake_mcp)
     return fake_mcp.tools["search_pathways"]
+
+
+def _get_link_tools():
+    fake_mcp = FakeMCP()
+    pathways.register(fake_mcp)
+    return (
+        fake_mcp.tools["get_pathway_genes"],
+        fake_mcp.tools["get_pathway_compounds"],
+        fake_mcp.tools["get_pathway_reactions"],
+    )
 
 
 def test_filter_pathways_by_query_matches_tokens_case_insensitive() -> None:
@@ -101,3 +117,43 @@ def test_search_pathways_organism_uses_list_and_local_filter() -> None:
     assert result.database == "pathway/bsu"
     assert result.total_found == 1
     assert list(result.results.keys()) == ["bsu01053"]
+
+
+# --- path: prefix normalization tests ---
+
+
+def test_get_pathway_genes_adds_path_prefix() -> None:
+    get_pathway_genes, _, _ = _get_link_tools()
+    link_resp = "path:pae00405\tpae:PA0001\npath:pae00405\tpae:PA0002\n"
+    fake_kegg = FakeKEGG(link_response=link_resp)
+
+    asyncio.run(get_pathway_genes(pathway_id="pae00405", ctx=_make_ctx(fake_kegg)))
+
+    assert fake_kegg.link_calls == [("genes", "path:pae00405")]
+
+
+def test_get_pathway_genes_keeps_existing_prefix() -> None:
+    get_pathway_genes, _, _ = _get_link_tools()
+    fake_kegg = FakeKEGG(link_response="")
+
+    asyncio.run(get_pathway_genes(pathway_id="path:pae00405", ctx=_make_ctx(fake_kegg)))
+
+    assert fake_kegg.link_calls == [("genes", "path:pae00405")]
+
+
+def test_get_pathway_compounds_adds_path_prefix() -> None:
+    _, get_pathway_compounds, _ = _get_link_tools()
+    fake_kegg = FakeKEGG(link_response="")
+
+    asyncio.run(get_pathway_compounds(pathway_id="map00010", ctx=_make_ctx(fake_kegg)))
+
+    assert fake_kegg.link_calls == [("compound", "path:map00010")]
+
+
+def test_get_pathway_reactions_adds_path_prefix() -> None:
+    _, _, get_pathway_reactions = _get_link_tools()
+    fake_kegg = FakeKEGG(link_response="")
+
+    asyncio.run(get_pathway_reactions(pathway_id="hsa00010", ctx=_make_ctx(fake_kegg)))
+
+    assert fake_kegg.link_calls == [("reaction", "path:hsa00010")]
