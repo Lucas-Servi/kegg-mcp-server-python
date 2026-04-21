@@ -53,9 +53,6 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-      - name: Install project (for dependency scan)
-        run: uv pip install . --system
-
       - name: Install scanners
         run: pip install bandit pip-audit
 
@@ -63,4 +60,4 @@ jobs:
         run: bandit -r src/ -ll
 
       - name: pip-audit dependency CVE scan
-        run: pip-audit --strict --skip-editable
+        run: pip-audit --strict -r requirements.txt
