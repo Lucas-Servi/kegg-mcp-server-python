@@ -54,7 +54,7 @@ jobs:
         run: pip install uv
 
       - name: Install project (for dependency scan)
-        run: uv pip install -e . --system
+        run: uv pip install . --system
 
       - name: Install scanners
         run: pip install bandit pip-audit
