@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from mcp.server.fastmcp import Context
 
-from kegg_mcp_server.models.common import Reference, SearchResult
+from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
+from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.pathway import PathwayInfo, PathwayLinks
-from kegg_mcp_server.parsers import parse_flat_entry, parse_link_response, parse_tab_list
+from kegg_mcp_server.parsers import (
+    parse_flat_entry,
+    parse_link_response,
+    parse_tab_list,
+    summarize_flat_entry,
+)
+from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -47,51 +54,56 @@ def _build(p: dict) -> PathwayInfo:
 
 def register(mcp: FastMCP) -> None:
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
     async def search_pathways(
-        query: str, organism_code: str = "map", max_results: int = 50, ctx: Context = None
-    ) -> SearchResult:
+        query: str, organism_code: str = "map", max_results: int = 25, ctx: Context = None
+    ) -> SearchResult | ErrorResult:
         """Search KEGG pathways by keyword.
 
         Args:
             query: Search term (e.g. 'glycolysis', 'TCA', 'insulin signaling').
             organism_code: 3-4 letter organism code (e.g. 'hsa' for human, 'mmu' for mouse).
                 Use 'map' for reference pathways.
-            max_results: Maximum number of results to return.
+            max_results: Maximum number of results to return (capped at 100).
         """
         kegg = ctx.request_context.lifespan_context.kegg
         normalized_organism = organism_code.strip().lower()
 
         if normalized_organism == "map":
             db = "pathway"
-            raw = await kegg.find(db, query)
-            results = parse_tab_list(raw)
+            results = parse_tab_list(await kegg.find(db, query))
         else:
             db = f"pathway/{normalized_organism}"
-            raw = await kegg.list(db)
-            results = _filter_pathways_by_query(parse_tab_list(raw), query)
+            results = _filter_pathways_by_query(parse_tab_list(await kegg.list(db)), query)
 
-        limited = dict(list(results.items())[:max_results])
-        return SearchResult(
-            query=query,
-            database=db,
-            total_found=len(results),
-            returned_count=len(limited),
-            results=limited,
-        )
+        return build_search_result(query, db, results, max_results)
 
-    @mcp.tool()
-    async def get_pathway_info(pathway_id: str, ctx: Context = None) -> PathwayInfo:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def get_pathway_info(
+        pathway_id: str,
+        detail_level: Literal["summary", "full"] = "summary",
+        ctx: Context = None,
+    ) -> PathwayInfo | EntrySummary | ErrorResult:
         """Get detailed information for a KEGG pathway.
 
         Args:
             pathway_id: KEGG pathway ID (e.g. 'hsa00010', 'map00010').
+            detail_level: 'summary' (default, compact) or 'full' (complete flat-file parse
+                with all linked genes, compounds, reactions, references, and xrefs).
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        return _build(parse_flat_entry(await kegg.get(pathway_id)))
+        parsed = parse_flat_entry(await kegg.get(pathway_id))
+        if detail_level == "full":
+            return _build(parsed)
+        return EntrySummary(**summarize_flat_entry(parsed))
 
-    @mcp.tool()
-    async def get_pathway_genes(pathway_id: str, ctx: Context = None) -> PathwayLinks:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def get_pathway_genes(
+        pathway_id: str, ctx: Context = None
+    ) -> PathwayLinks | ErrorResult:
         """Get all genes associated with a KEGG pathway.
 
         Args:
@@ -101,8 +113,11 @@ def register(mcp: FastMCP) -> None:
         pairs = parse_link_response(await kegg.link("genes", pathway_id))
         return PathwayLinks(pathway_id=pathway_id, linked_db="genes", pairs=pairs, count=len(pairs))
 
-    @mcp.tool()
-    async def get_pathway_compounds(pathway_id: str, ctx: Context = None) -> PathwayLinks:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def get_pathway_compounds(
+        pathway_id: str, ctx: Context = None
+    ) -> PathwayLinks | ErrorResult:
         """Get all compounds (metabolites) associated with a KEGG pathway.
 
         Args:
@@ -114,8 +129,11 @@ def register(mcp: FastMCP) -> None:
             pathway_id=pathway_id, linked_db="compound", pairs=pairs, count=len(pairs)
         )
 
-    @mcp.tool()
-    async def get_pathway_reactions(pathway_id: str, ctx: Context = None) -> PathwayLinks:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def get_pathway_reactions(
+        pathway_id: str, ctx: Context = None
+    ) -> PathwayLinks | ErrorResult:
         """Get all reactions in a KEGG pathway.
 
         Args:

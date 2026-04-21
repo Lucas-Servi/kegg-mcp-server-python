@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from mcp.server.fastmcp import Context
 
-from kegg_mcp_server.models.common import Reference, SearchResult
+from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.disease import DiseaseInfo
-from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list
+from kegg_mcp_server.models.errors import ErrorResult
+from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
+from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -30,34 +32,36 @@ def _build(p: dict) -> DiseaseInfo:
 
 def register(mcp: FastMCP) -> None:
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
     async def search_diseases(
-        query: str, max_results: int = 50, ctx: Context = None
-    ) -> SearchResult:
+        query: str, max_results: int = 25, ctx: Context = None
+    ) -> SearchResult | ErrorResult:
         """Search KEGG diseases by name or keyword.
 
         Args:
             query: Disease name (e.g. 'diabetes', 'cancer', 'Alzheimer').
-            max_results: Maximum number of results to return.
+            max_results: Maximum number of results to return (capped at 100).
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        raw = await kegg.find("disease", query)
-        results = parse_tab_list(raw)
-        limited = dict(list(results.items())[:max_results])
-        return SearchResult(
-            query=query,
-            database="disease",
-            total_found=len(results),
-            returned_count=len(limited),
-            results=limited,
-        )
+        results = parse_tab_list(await kegg.find("disease", query))
+        return build_search_result(query, "disease", results, max_results)
 
-    @mcp.tool()
-    async def get_disease_info(disease_id: str, ctx: Context = None) -> DiseaseInfo:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def get_disease_info(
+        disease_id: str,
+        detail_level: Literal["summary", "full"] = "summary",
+        ctx: Context = None,
+    ) -> DiseaseInfo | EntrySummary | ErrorResult:
         """Get detailed information for a KEGG disease entry.
 
         Args:
             disease_id: KEGG disease ID (e.g. 'H00004' for colorectal cancer).
+            detail_level: 'summary' (default, compact) or 'full' (complete flat-file parse).
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        return _build(parse_flat_entry(await kegg.get(disease_id)))
+        parsed = parse_flat_entry(await kegg.get(disease_id))
+        if detail_level == "full":
+            return _build(parsed)
+        return EntrySummary(**summarize_flat_entry(parsed))

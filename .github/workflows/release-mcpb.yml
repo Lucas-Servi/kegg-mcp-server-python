@@ -1,0 +1,85 @@
+name: Release MCPB
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-mcpb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js (for mcpb CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Stage bundle layout
+        run: |
+          mkdir -p build/server/src build/server/vendor
+          cp -r src/kegg_mcp_server build/server/src/
+          cp manifest.json build/
+
+      - name: Write entry script
+        run: |
+          cat > build/server/main.py <<'PY'
+          """MCPB entry point. Adds the vendored deps and src layout to sys.path
+          before launching the server."""
+
+          from __future__ import annotations
+
+          import os
+          import sys
+          from pathlib import Path
+
+          HERE = Path(__file__).resolve().parent
+          for extra in (HERE / "vendor", HERE / "src"):
+              p = str(extra)
+              if p not in sys.path:
+                  sys.path.insert(0, p)
+
+          os.environ.setdefault("PYTHONUNBUFFERED", "1")
+
+          from kegg_mcp_server.server import main  # noqa: E402
+
+          if __name__ == "__main__":
+              main()
+          PY
+
+      - name: Vendor Python runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            --target build/server/vendor \
+            --no-compile \
+            "mcp>=1.20" \
+            "httpx>=0.27" \
+            "pydantic>=2.0" \
+            "cachetools>=5.3" \
+            "tenacity>=8.2"
+
+      - name: Install mcpb CLI
+        run: npm install -g @anthropic-ai/mcpb
+
+      - name: Validate manifest
+        run: mcpb validate build/manifest.json
+
+      - name: Pack .mcpb
+        run: |
+          cd build
+          mcpb pack . ../kegg-mcp-server-${GITHUB_REF_NAME#v}.mcpb
+
+      - name: Attach .mcpb to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: kegg-mcp-server-*.mcpb

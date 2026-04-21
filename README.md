@@ -7,7 +7,9 @@
 
 An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **33 tools**, **8 resource templates**, and **3 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.).
 
-Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes TTL caching and batch helpers out of the box. No API key required -- uses the free KEGG REST API.
+Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, KEGG-friendly concurrency limits, structured JSON stderr logging, and batch helpers out of the box. No API key required -- uses the free KEGG REST API.
+
+Responses are token-aware by default: `get_*_info` tools return a compact `EntrySummary` (entry id, name, class, description, counts of linked entities) unless you pass `detail_level="full"`. Errors are returned as a typed `ErrorResult` the model can reason about, not raised as exceptions.
 
 > **Note:** This is a community non-official project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories.
 
@@ -59,6 +61,10 @@ Add to your `claude_desktop_config.json`:
 ```bash
 claude mcp add kegg-mcp-server -- uvx kegg-mcp-server
 ```
+
+### MCPB bundle (Claude Desktop, no Python required)
+
+Download the latest `.mcpb` from the [releases page](https://github.com/Lucas-Servi/kegg-mcp-server-python/releases) and drag it onto Claude Desktop. The bundle vendors all Python dependencies and runs with Claude Desktop's embedded Python.
 
 ---
 
@@ -144,13 +150,16 @@ mcp dev kegg-mcp-server
 ```
 src/kegg_mcp_server/
   server.py       FastMCP instance, lifespan (httpx client + TTL cache), CLI
-  client.py       KEGGClient: async wrapper for all 7 KEGG REST operations
-  cache.py        TTLCache backed by cachetools
-  parsers.py      KEGG flat-file and tab-delimited response parsers
+  client.py       KEGGClient: async KEGG REST with retry/backoff + KEGG-politeness semaphore
+  cache.py        Per-op TTL cache (info 24h, list 1h, entry ops 5min)
+  parsers.py      KEGG flat-file and tab-delimited response parsers + summarize_flat_entry
+  errors.py       KEGGAPIError exception type
+  logging.py      JSON stderr logger (stdout is reserved for MCP stdio framing)
   resources.py    8 MCP resource templates
   prompts.py      3 bioinformatics workflow prompts
-  models/         Pydantic models for all KEGG entity types
-  tools/          13 tool modules, each with a register(mcp) function
+  models/         Pydantic models for all KEGG entity types + EntrySummary + ErrorResult
+  tools/          13 tool modules, each with a register(mcp) function; _common.py has the
+                  @kegg_tool error-boundary decorator and shared READ_ONLY annotations
 ```
 
 ---

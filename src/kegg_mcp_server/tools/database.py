@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 from mcp.server.fastmcp import Context
 
 from kegg_mcp_server.models.common import ListResult
+from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.organism import DatabaseInfo
+from kegg_mcp_server.tools._common import READ_ONLY, kegg_tool
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -13,8 +15,11 @@ if TYPE_CHECKING:
 
 def register(mcp: FastMCP) -> None:
 
-    @mcp.tool()
-    async def get_database_info(database: str = "kegg", ctx: Context = None) -> DatabaseInfo:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def get_database_info(
+        database: str = "kegg", ctx: Context = None
+    ) -> DatabaseInfo | ErrorResult:
         """Get release information and statistics for a KEGG database.
 
         Args:
@@ -36,8 +41,9 @@ def register(mcp: FastMCP) -> None:
                             pass
         return DatabaseInfo(database=database, release=release, entries=entries, raw_info=raw)
 
-    @mcp.tool()
-    async def list_organisms(ctx: Context = None) -> ListResult:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def list_organisms(ctx: Context = None) -> ListResult | ErrorResult:
         """List all organisms available in KEGG with their codes and names."""
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.list("organism")

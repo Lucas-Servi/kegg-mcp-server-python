@@ -1,0 +1,116 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "kegg-mcp-server",
+  "display_name": "KEGG MCP Server",
+  "version": "0.1.0",
+  "description": "Query the KEGG bioinformatics database (pathways, genes, compounds, drugs, and more) from Claude via the public KEGG REST API.",
+  "long_description": "Read-only MCP server for the KEGG REST API. Exposes 33 tools across 12 categories (pathways, genes, compounds, reactions, enzymes, diseases, drugs, modules, orthology, glycans, BRITE hierarchies, cross-database lookup) plus 8 URI resource templates and 3 guided bioinformatics prompts. Every tool is marked readOnly+idempotent. Responses are structured Pydantic JSON with a summary/full detail switch to keep context usage small. The KEGG REST API is free and unauthenticated — no keys required.",
+  "author": {
+    "name": "Lucas Servi",
+    "url": "https://github.com/Lucas-Servi"
+  },
+  "homepage": "https://github.com/Lucas-Servi/kegg-mcp-server-python",
+  "documentation": "https://github.com/Lucas-Servi/kegg-mcp-server-python#readme",
+  "support": "https://github.com/Lucas-Servi/kegg-mcp-server-python/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lucas-Servi/kegg-mcp-server-python"
+  },
+  "license": "MIT",
+  "keywords": [
+    "kegg",
+    "bioinformatics",
+    "pathways",
+    "genomics",
+    "metabolomics",
+    "systems-biology"
+  ],
+  "server": {
+    "type": "python",
+    "entry_point": "server/main.py",
+    "mcp_config": {
+      "command": "python",
+      "args": [
+        "-u",
+        "${__dirname}/server/main.py"
+      ],
+      "env": {
+        "PYTHONPATH": "${__dirname}/server/vendor:${__dirname}/server/src",
+        "PYTHONUNBUFFERED": "1",
+        "LOG_LEVEL": "${user_config.logLevel}"
+      }
+    }
+  },
+  "tools": [
+    {"name": "get_database_info", "description": "KEGG database release metadata."},
+    {"name": "list_organisms", "description": "List all KEGG organisms."},
+    {"name": "search_pathways", "description": "Search KEGG pathways by keyword."},
+    {"name": "get_pathway_info", "description": "Detailed info for a pathway (summary or full)."},
+    {"name": "get_pathway_genes", "description": "Genes linked to a pathway."},
+    {"name": "get_pathway_compounds", "description": "Compounds linked to a pathway."},
+    {"name": "get_pathway_reactions", "description": "Reactions in a pathway."},
+    {"name": "search_genes", "description": "Search for genes in a KEGG organism."},
+    {"name": "get_gene_info", "description": "Detailed info for a gene entry."},
+    {"name": "get_gene_orthologs", "description": "KO entries and cross-organism orthologs."},
+    {"name": "search_compounds", "description": "Search KEGG compounds."},
+    {"name": "get_compound_info", "description": "Detailed info for a compound."},
+    {"name": "get_compound_reactions", "description": "Reactions involving a compound."},
+    {"name": "search_reactions", "description": "Search KEGG reactions."},
+    {"name": "get_reaction_info", "description": "Detailed info for a reaction."},
+    {"name": "search_enzymes", "description": "Search KEGG enzymes by EC number or name."},
+    {"name": "get_enzyme_info", "description": "Detailed info for an enzyme."},
+    {"name": "search_diseases", "description": "Search KEGG diseases."},
+    {"name": "get_disease_info", "description": "Detailed info for a disease entry."},
+    {"name": "search_drugs", "description": "Search KEGG drugs."},
+    {"name": "get_drug_info", "description": "Detailed info for a drug."},
+    {"name": "get_drug_interactions", "description": "Drug-drug interactions (DDI)."},
+    {"name": "search_modules", "description": "Search KEGG modules."},
+    {"name": "get_module_info", "description": "Detailed info for a module."},
+    {"name": "search_ko_entries", "description": "Search KEGG Orthology (KO) entries."},
+    {"name": "get_ko_info", "description": "Detailed info for a KO entry."},
+    {"name": "search_glycans", "description": "Search KEGG glycans."},
+    {"name": "get_glycan_info", "description": "Detailed info for a glycan."},
+    {"name": "search_brite", "description": "Search KEGG BRITE hierarchies."},
+    {"name": "get_brite_info", "description": "Detailed info for a BRITE entry."},
+    {"name": "batch_entry_lookup", "description": "Fetch multiple KEGG entries in bulk (max 50)."},
+    {"name": "convert_identifiers", "description": "Convert IDs between KEGG and external databases."},
+    {"name": "find_related_entries", "description": "Find linked entries across databases."}
+  ],
+  "prompts": [
+    {
+      "name": "pathway_enrichment_analysis",
+      "description": "Guided KEGG pathway enrichment for a gene list.",
+      "arguments": ["gene_list", "organism"],
+      "text": "Analyze a gene list against KEGG pathways: map each gene to a KEGG ID in the target organism, aggregate pathway associations, identify the most frequent pathways, describe their biological function, and summarize enrichment."
+    },
+    {
+      "name": "drug_target_investigation",
+      "description": "Drug targets, pathways, and interactions walkthrough.",
+      "arguments": ["drug_name"],
+      "text": "Investigate a drug in KEGG: find its entry, retrieve targets and classification, explore each target's function and pathways, and screen for drug-drug interactions. Produce a mechanism-of-action summary."
+    },
+    {
+      "name": "metabolic_pathway_comparison",
+      "description": "Cross-species metabolic pathway comparison.",
+      "arguments": ["pathway_id", "organisms"],
+      "text": "Compare a reference metabolic pathway across several KEGG organism codes: pull organism-specific pathway entries, list genes and compounds per species, identify conserved vs species-specific elements, and summarize evolutionary conservation."
+    }
+  ],
+  "user_config": {
+    "logLevel": {
+      "type": "string",
+      "title": "Log level",
+      "description": "Verbosity of structured JSON logs written to stderr.",
+      "default": "INFO",
+      "required": false
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.11"
+    }
+  }
+}

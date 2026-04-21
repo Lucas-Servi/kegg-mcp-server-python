@@ -12,7 +12,7 @@ class FakeMCP:
     def __init__(self) -> None:
         self.tools: dict[str, object] = {}
 
-    def tool(self):  # noqa: ANN201
+    def tool(self, *args, **kwargs):  # noqa: ANN001, ANN201, ANN002, ANN003
         def decorator(func):  # noqa: ANN001, ANN202
             self.tools[func.__name__] = func
             return func

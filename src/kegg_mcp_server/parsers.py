@@ -167,6 +167,73 @@ def parse_flat_entry(text: str) -> dict[str, Any]:
     return result
 
 
+_SUMMARY_SCALAR_FIELDS = (
+    "entry",
+    "entry_type",
+    "name",
+    "cls",
+    "definition",
+    "description",
+    "formula",
+    "equation",
+    "organism",
+    "exact_mass",
+    "mol_weight",
+)
+
+# Linked-entity sections whose length is useful as a count in a summary
+_SUMMARY_COUNT_FIELDS = (
+    "gene",
+    "compound",
+    "reaction",
+    "enzyme",
+    "pathway",
+    "module",
+    "disease",
+    "drug",
+    "orthology",
+    "network",
+    "target",
+    "motif",
+    "brite",
+    "variant",
+)
+
+# Number of DB xrefs to surface in a summary (keep size bounded)
+_SUMMARY_DBLINKS_LIMIT = 5
+
+
+def summarize_flat_entry(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Project a `parse_flat_entry` result down to a compact summary.
+
+    Keeps scalar header fields (entry, name, class, definition, …) and replaces
+    long linked-entity dicts (genes, compounds, reactions, …) with counts. A
+    small sample of DB xrefs is retained; references, sequences, and long text
+    blocks are omitted. Mirrors `EntrySummary` in models/common.py.
+    """
+    out: dict[str, Any] = {}
+    for field in _SUMMARY_SCALAR_FIELDS:
+        if field in parsed:
+            out[field] = parsed[field]
+
+    counts: dict[str, int] = {}
+    for field in _SUMMARY_COUNT_FIELDS:
+        value = parsed.get(field)
+        if isinstance(value, dict) and value:
+            counts[field] = len(value)
+        elif isinstance(value, list) and value:
+            counts[field] = len(value)
+    if counts:
+        out["counts"] = counts
+
+    dblinks = parsed.get("dblinks")
+    if isinstance(dblinks, dict) and dblinks:
+        sampled = dict(list(dblinks.items())[:_SUMMARY_DBLINKS_LIMIT])
+        out["dblinks_sample"] = sampled
+
+    return out
+
+
 def parse_multi_flat(text: str) -> list[dict[str, Any]]:
     """Parse a KEGG response containing multiple flat-file entries (separated by ///)."""
     entries: list[dict[str, Any]] = []

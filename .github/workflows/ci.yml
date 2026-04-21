@@ -30,5 +30,37 @@ jobs:
       - name: Lint with ruff
         run: ruff check src/ tests/
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: pytest tests/ -v
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: false
+          files: ./.coverage
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install project (for dependency scan)
+        run: uv pip install -e . --system
+
+      - name: Install scanners
+        run: pip install bandit pip-audit
+
+      - name: Bandit SAST
+        run: bandit -r src/ -ll
+
+      - name: pip-audit dependency CVE scan
+        run: pip-audit --strict --skip-editable

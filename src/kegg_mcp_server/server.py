@@ -12,6 +12,7 @@ from mcp.server.fastmcp import FastMCP
 
 from kegg_mcp_server.cache import TTLCache
 from kegg_mcp_server.client import KEGGClient
+from kegg_mcp_server.logging import setup_logging
 
 
 @dataclass
@@ -73,6 +74,8 @@ def main() -> None:
         help="Port for streamable-http transport (default: 8080)",
     )
     args = parser.parse_args()
+
+    setup_logging()
 
     if args.transport == "streamable-http":
         mcp.settings.host = args.host

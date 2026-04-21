@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 from mcp.server.fastmcp import Context
 
 from kegg_mcp_server.models.common import BatchLookupResult, ConversionResult, LinkResult
+from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_conv_response, parse_link_response, parse_multi_flat
+from kegg_mcp_server.tools._common import READ_ONLY, kegg_tool
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -15,8 +17,11 @@ _MAX_BATCH = 50
 
 def register(mcp: FastMCP) -> None:
 
-    @mcp.tool()
-    async def batch_entry_lookup(entry_ids: list[str], ctx: Context = None) -> BatchLookupResult:
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
+    async def batch_entry_lookup(
+        entry_ids: list[str], ctx: Context = None
+    ) -> BatchLookupResult | ErrorResult:
         """Fetch multiple KEGG entries in bulk (max 50 IDs).
 
         Automatically chunks requests into groups of 10 to respect KEGG's API limit.
@@ -34,10 +39,11 @@ def register(mcp: FastMCP) -> None:
             all_parsed.extend(parse_multi_flat(chunk))
         return BatchLookupResult(requested=entry_ids, found=len(all_parsed), entries=all_parsed)
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
     async def convert_identifiers(
         source_db: str, target_db: str, entry_ids: list[str] | None = None, ctx: Context = None
-    ) -> ConversionResult:
+    ) -> ConversionResult | ErrorResult:
         """Convert KEGG IDs to/from external database identifiers.
 
         Args:
@@ -53,10 +59,11 @@ def register(mcp: FastMCP) -> None:
             source_db=source_db, target_db=target_db, mappings=mappings, count=len(mappings)
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
+    @kegg_tool
     async def find_related_entries(
         entry_id: str, target_db: str, ctx: Context = None
-    ) -> LinkResult:
+    ) -> LinkResult | ErrorResult:
         """Find related entries in another KEGG database for a given entry.
 
         Args:
