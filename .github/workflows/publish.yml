@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -24,17 +25,37 @@ jobs:
       - name: Install uv
         run: pip install uv
 
+      - name: Validate tag matches package version
+        id: version
+        run: |
+          PACKAGE_VERSION="$(python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          data = tomllib.loads(Path("pyproject.toml").read_text())
+          version_path = Path(data["tool"]["hatch"]["version"]["path"])
+          version = next(
+              line.split("=", 1)[1].strip().strip('"').strip("'")
+              for line in version_path.read_text().splitlines()
+              if line.startswith("__version__")
+          )
+          print(version)
+          PY
+          )"
+          echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "${PACKAGE_VERSION}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package version ${PACKAGE_VERSION}"
+            exit 1
+          fi
+
       - name: Build wheel + sdist
         run: uv build
-
-      - name: Read version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-${{ steps.version.outputs.version }}
           path: dist/
 
   publish:
@@ -42,13 +63,13 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/kegg-mcp-server
+      url: https://pypi.org/project/kegg-mcp-server/
     permissions:
       id-token: write  # OIDC for Trusted Publishing
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: dist
+          name: dist-${{ needs.build.outputs.version }}
           path: dist/
 
       - name: Publish to PyPI

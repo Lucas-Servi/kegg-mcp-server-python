@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import httpx
 from mcp.server.fastmcp import FastMCP
 
+from kegg_mcp_server import __version__
 from kegg_mcp_server.cache import TTLCache
 from kegg_mcp_server.client import KEGGClient
 from kegg_mcp_server.logging import setup_logging
@@ -26,7 +27,7 @@ async def lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     async with httpx.AsyncClient(
         base_url="https://rest.kegg.jp",
         timeout=30.0,
-        headers={"User-Agent": "kegg-mcp-server/0.1.0"},
+        headers={"User-Agent": f"kegg-mcp-server/{__version__}"},
     ) as http:
         yield AppContext(kegg=KEGGClient(http, cache))
 
