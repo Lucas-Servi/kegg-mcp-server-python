@@ -27,6 +27,22 @@ def _ensure_path_prefix(pathway_id: str) -> str:
     return pathway_id
 
 
+def _pathway_genes_target(pathway_id: str) -> str:
+    """Return the correct target_db for a genes link call against this pathway.
+
+    KEGG rejects /link/genes/path:<id> with 400 for all pathway types.
+    The only working form is /link/<org_code>/path:<org_code><num>.
+    For reference pathways (map*) we fall back to 'genes' and let the API
+    return an empty result or KEGGAPIError that the kegg_tool decorator handles.
+    """
+    bare = pathway_id.removeprefix("path:")
+    m = re.match(r"^([a-zA-Z]+)\d+$", bare)
+    if not m:
+        return "genes"
+    org = m.group(1).lower()
+    return "genes" if org == "map" else org
+
+
 def _filter_pathways_by_query(pathways: dict[str, str], query: str) -> dict[str, str]:
     """Filter pathways by query tokens (case-insensitive) across ID + description."""
     terms = [t.lower() for t in re.split(r"\s+", query.strip()) if t]
@@ -117,8 +133,10 @@ def register(mcp: FastMCP) -> None:
             pathway_id: KEGG pathway ID (e.g. 'hsa00010').
         """
         kegg = ctx.request_context.lifespan_context.kegg
-        pairs = parse_link_response(await kegg.link("genes", _ensure_path_prefix(pathway_id)))
-        return PathwayLinks(pathway_id=pathway_id, linked_db="genes", pairs=pairs, count=len(pairs))
+        source = _ensure_path_prefix(pathway_id)
+        target = _pathway_genes_target(pathway_id)
+        pairs = parse_link_response(await kegg.link(target, source))
+        return PathwayLinks(pathway_id=pathway_id, linked_db=target, pairs=pairs, count=len(pairs))
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool

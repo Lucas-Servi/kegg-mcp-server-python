@@ -122,14 +122,15 @@ def test_search_pathways_organism_uses_list_and_local_filter() -> None:
 # --- path: prefix normalization tests ---
 
 
-def test_get_pathway_genes_adds_path_prefix() -> None:
+def test_get_pathway_genes_uses_org_code_as_target() -> None:
+    """Organism-specific pathway: target must be org code, not 'genes'."""
     get_pathway_genes, _, _ = _get_link_tools()
     link_resp = "path:pae00405\tpae:PA0001\npath:pae00405\tpae:PA0002\n"
     fake_kegg = FakeKEGG(link_response=link_resp)
 
     asyncio.run(get_pathway_genes(pathway_id="pae00405", ctx=_make_ctx(fake_kegg)))
 
-    assert fake_kegg.link_calls == [("genes", "path:pae00405")]
+    assert fake_kegg.link_calls == [("pae", "path:pae00405")]
 
 
 def test_get_pathway_genes_keeps_existing_prefix() -> None:
@@ -138,7 +139,26 @@ def test_get_pathway_genes_keeps_existing_prefix() -> None:
 
     asyncio.run(get_pathway_genes(pathway_id="path:pae00405", ctx=_make_ctx(fake_kegg)))
 
-    assert fake_kegg.link_calls == [("genes", "path:pae00405")]
+    assert fake_kegg.link_calls == [("pae", "path:pae00405")]
+
+
+def test_get_pathway_genes_hsa_uses_hsa_target() -> None:
+    get_pathway_genes, _, _ = _get_link_tools()
+    fake_kegg = FakeKEGG(link_response="")
+
+    asyncio.run(get_pathway_genes(pathway_id="hsa00010", ctx=_make_ctx(fake_kegg)))
+
+    assert fake_kegg.link_calls == [("hsa", "path:hsa00010")]
+
+
+def test_get_pathway_genes_map_falls_back_to_genes_target() -> None:
+    """Reference pathways (map*) fall back to 'genes' target (API may return error)."""
+    get_pathway_genes, _, _ = _get_link_tools()
+    fake_kegg = FakeKEGG(link_response="")
+
+    asyncio.run(get_pathway_genes(pathway_id="map00010", ctx=_make_ctx(fake_kegg)))
+
+    assert fake_kegg.link_calls == [("genes", "path:map00010")]
 
 
 def test_get_pathway_compounds_adds_path_prefix() -> None:
