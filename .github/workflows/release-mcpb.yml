@@ -80,6 +80,6 @@ jobs:
           mcpb pack . ../kegg-mcp-server-${GITHUB_REF_NAME#v}.mcpb
 
       - name: Attach .mcpb to GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: kegg-mcp-server-*.mcpb
