@@ -130,8 +130,24 @@ def register(mcp: FastMCP) -> None:
         """Get all genes associated with a KEGG pathway.
 
         Args:
-            pathway_id: KEGG pathway ID (e.g. 'hsa00010').
+            pathway_id: KEGG pathway ID (e.g. 'hsa00010'). Use organism-specific
+                IDs (e.g. 'pae00350' for P. aeruginosa) — reference pathways
+                ('map*') are not supported by the KEGG gene link API.
         """
+        bare = pathway_id.removeprefix("path:")
+        if re.match(r"^map\d+$", bare):
+            return ErrorResult(
+                error=(
+                    f"Gene link queries are not supported for reference pathways ('{bare}'). "
+                    "Use an organism-specific pathway ID instead "
+                    "(e.g. 'pae00350' for P. aeruginosa, 'eco00350' for E. coli). "
+                    "Use search_pathways(organism_code='pae') to find organism-specific IDs."
+                ),
+                retryable=False,
+                status=None,
+                path=None,
+                hint="Replace 'map' prefix with the organism code (e.g. pae, eco, hsa).",
+            )
         kegg = ctx.request_context.lifespan_context.kegg
         source = _ensure_path_prefix(pathway_id)
         target = _pathway_genes_target(pathway_id)

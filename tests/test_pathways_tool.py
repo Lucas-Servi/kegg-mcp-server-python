@@ -151,14 +151,19 @@ def test_get_pathway_genes_hsa_uses_hsa_target() -> None:
     assert fake_kegg.link_calls == [("hsa", "path:hsa00010")]
 
 
-def test_get_pathway_genes_map_falls_back_to_genes_target() -> None:
-    """Reference pathways (map*) fall back to 'genes' target (API may return error)."""
+def test_get_pathway_genes_map_returns_error_without_api_call() -> None:
+    """Reference pathways (map*) return ErrorResult immediately — no link API call made."""
+    from kegg_mcp_server.models.errors import ErrorResult
+
     get_pathway_genes, _, _ = _get_link_tools()
     fake_kegg = FakeKEGG(link_response="")
 
-    asyncio.run(get_pathway_genes(pathway_id="map00010", ctx=_make_ctx(fake_kegg)))
+    result = asyncio.run(get_pathway_genes(pathway_id="map00010", ctx=_make_ctx(fake_kegg)))
 
-    assert fake_kegg.link_calls == [("genes", "path:map00010")]
+    assert fake_kegg.link_calls == []
+    assert isinstance(result, ErrorResult)
+    assert "map00010" in result.error
+    assert result.retryable is False
 
 
 def test_get_pathway_compounds_adds_path_prefix() -> None:
