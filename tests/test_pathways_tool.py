@@ -21,7 +21,12 @@ class FakeMCP:
 
 
 class FakeKEGG:
-    def __init__(self, find_response: str = "", list_response: str = "", link_response: str = "") -> None:
+    def __init__(
+        self,
+        find_response: str = "",
+        list_response: str = "",
+        link_response: str = "",
+    ) -> None:
         self.find_response = find_response
         self.list_response = list_response
         self.link_response = link_response
