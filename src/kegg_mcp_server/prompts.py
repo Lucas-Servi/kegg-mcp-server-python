@@ -66,6 +66,32 @@ def register_prompts(mcp: FastMCP) -> None:
         )
 
     @mcp.prompt()
+    def visualize_pathway(
+        pathway_id: str,
+        organism: str = "hsa",
+    ) -> str:
+        """Visualize a KEGG pathway as ASCII art with biological context.
+
+        Renders the pathway in both chain and grid modes, then annotates
+        key enzymes, branch points, and disease associations.
+
+        Args:
+            pathway_id: Reference pathway number (e.g. '00010' for glycolysis).
+            organism: KEGG organism code (default 'hsa' for human).
+        """
+        full_id = f"{organism}{pathway_id}" if not pathway_id.startswith(organism) else pathway_id
+        return (
+            f"Visualize KEGG pathway {full_id}:\n\n"
+            f"1. Use `get_pathway_info` on '{full_id}' to understand the pathway context\n"
+            f"2. Use `render_pathway_ascii` with pathway_id='{full_id}' and style='chain' "
+            f"for a linear reaction overview\n"
+            f"3. Use `render_pathway_ascii` with style='grid' for the full spatial layout\n"
+            f"4. Identify key branch points, rate-limiting enzymes, and regulatory steps\n"
+            f"5. Note any disease associations or drug targets in the pathway\n"
+            f"6. Summarize the biological significance of the pathway topology"
+        )
+
+    @mcp.prompt()
     def metabolic_pathway_comparison(
         pathway_id: str,
         organisms: str = "hsa,mmu,eco",

@@ -9,6 +9,7 @@ from kegg_mcp_server.models.enzyme import EnzymeInfo
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
 from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.validators import validate_enzyme_id, validate_query
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -45,6 +46,7 @@ def register(mcp: FastMCP) -> None:
             query: EC number (e.g. '1.1.1.1') or enzyme name (e.g. 'kinase', 'oxidase').
             max_results: Maximum number of results to return (capped at 100).
         """
+        query = validate_query(query)
         kegg = ctx.request_context.lifespan_context.kegg
         results = parse_tab_list(await kegg.find("enzyme", query))
         return build_search_result(query, "enzyme", results, max_results)
@@ -62,6 +64,7 @@ def register(mcp: FastMCP) -> None:
             enzyme_id: EC number (e.g. '1.1.1.1') or prefixed ID (e.g. 'ec:1.1.1.1').
             detail_level: 'summary' (default, compact) or 'full' (complete flat-file parse).
         """
+        enzyme_id = validate_enzyme_id(enzyme_id)
         kegg = ctx.request_context.lifespan_context.kegg
         entry_id = enzyme_id if enzyme_id.startswith("ec:") else f"ec:{enzyme_id}"
         parsed = parse_flat_entry(await kegg.get(entry_id))

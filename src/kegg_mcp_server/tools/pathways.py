@@ -15,6 +15,7 @@ from kegg_mcp_server.parsers import (
     summarize_flat_entry,
 )
 from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.validators import validate_organism_code, validate_pathway_id, validate_query
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -90,8 +91,10 @@ def register(mcp: FastMCP) -> None:
                 Use 'map' for reference pathways.
             max_results: Maximum number of results to return (capped at 100).
         """
+        query = validate_query(query)
+        organism_code = validate_organism_code(organism_code)
         kegg = ctx.request_context.lifespan_context.kegg
-        normalized_organism = organism_code.strip().lower()
+        normalized_organism = organism_code
 
         if normalized_organism == "map":
             db = "pathway"
@@ -116,6 +119,7 @@ def register(mcp: FastMCP) -> None:
             detail_level: 'summary' (default, compact) or 'full' (complete flat-file parse
                 with all linked genes, compounds, reactions, references, and xrefs).
         """
+        pathway_id = validate_pathway_id(pathway_id)
         kegg = ctx.request_context.lifespan_context.kegg
         parsed = parse_flat_entry(await kegg.get(pathway_id))
         if detail_level == "full":
@@ -134,6 +138,7 @@ def register(mcp: FastMCP) -> None:
                 IDs (e.g. 'pae00350' for P. aeruginosa) — reference pathways
                 ('map*') are not supported by the KEGG gene link API.
         """
+        pathway_id = validate_pathway_id(pathway_id)
         bare = pathway_id.removeprefix("path:")
         if re.match(r"^map\d+$", bare):
             return ErrorResult(
@@ -164,6 +169,7 @@ def register(mcp: FastMCP) -> None:
         Args:
             pathway_id: KEGG pathway ID (e.g. 'map00010').
         """
+        pathway_id = validate_pathway_id(pathway_id)
         kegg = ctx.request_context.lifespan_context.kegg
         pairs = parse_link_response(await kegg.link("compound", _ensure_path_prefix(pathway_id)))
         return PathwayLinks(
@@ -180,6 +186,7 @@ def register(mcp: FastMCP) -> None:
         Args:
             pathway_id: KEGG pathway ID (e.g. 'hsa00010').
         """
+        pathway_id = validate_pathway_id(pathway_id)
         kegg = ctx.request_context.lifespan_context.kegg
         pairs = parse_link_response(await kegg.link("reaction", _ensure_path_prefix(pathway_id)))
         return PathwayLinks(

@@ -3,9 +3,9 @@
   "manifest_version": "0.4",
   "name": "kegg-mcp-server",
   "display_name": "KEGG MCP Server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Query the KEGG bioinformatics database (pathways, genes, compounds, drugs, and more) from Claude via the public KEGG REST API.",
-  "long_description": "Read-only MCP server for the KEGG REST API. Exposes 33 tools across 12 categories (pathways, genes, compounds, reactions, enzymes, diseases, drugs, modules, orthology, glycans, BRITE hierarchies, cross-database lookup) plus 8 URI resource templates and 3 guided bioinformatics prompts. Every tool is marked readOnly+idempotent. Responses are structured Pydantic JSON with a summary/full detail switch to keep context usage small. The KEGG REST API is free and unauthenticated — no keys required.",
+  "long_description": "Read-only MCP server for the KEGG REST API. Exposes 34 tools across 13 categories (pathways, genes, compounds, reactions, enzymes, diseases, drugs, modules, orthology, glycans, BRITE hierarchies, cross-database lookup, ASCII visualization) plus 9 URI resource templates and 4 guided bioinformatics prompts. Every tool is marked readOnly+idempotent. Responses are structured Pydantic JSON with a summary/full detail switch to keep context usage small. The KEGG REST API is free and unauthenticated — no keys required.",
   "author": {
     "name": "Lucas Servi",
     "url": "https://github.com/Lucas-Servi"
@@ -174,7 +174,22 @@
     {
       "name": "find_related_entries",
       "description": "Find linked entries across databases."
+    },
+    {
+      "name": "render_pathway_ascii",
+      "description": "Render a KEGG pathway as LLM-friendly ASCII art (chain or grid mode)."
     }
+  ],
+  "resources": [
+    {"uri": "kegg://pathway/{pathway_id}", "description": "KEGG pathway entry as JSON."},
+    {"uri": "kegg://gene/{gene_id}", "description": "KEGG gene entry as JSON."},
+    {"uri": "kegg://compound/{compound_id}", "description": "KEGG compound entry as JSON."},
+    {"uri": "kegg://reaction/{reaction_id}", "description": "KEGG reaction entry as JSON."},
+    {"uri": "kegg://disease/{disease_id}", "description": "KEGG disease entry as JSON."},
+    {"uri": "kegg://drug/{drug_id}", "description": "KEGG drug entry as JSON."},
+    {"uri": "kegg://organism/{org_code}", "description": "Pathways for a KEGG organism."},
+    {"uri": "kegg://pathway/{pathway_id}/ascii", "description": "ASCII art rendering of a KEGG pathway."},
+    {"uri": "kegg://search/{database}/{query}", "description": "Search any KEGG database."}
   ],
   "prompts": [
     {
@@ -202,6 +217,15 @@
         "organisms"
       ],
       "text": "Compare a reference metabolic pathway across several KEGG organism codes: pull organism-specific pathway entries, list genes and compounds per species, identify conserved vs species-specific elements, and summarize evolutionary conservation."
+    },
+    {
+      "name": "visualize_pathway",
+      "description": "Visualize a KEGG pathway as ASCII art with biological context.",
+      "arguments": [
+        "pathway_id",
+        "organism"
+      ],
+      "text": "Render a KEGG pathway in chain and grid ASCII modes, annotate key enzymes, branch points, rate-limiting steps, and disease associations."
     }
   ],
   "user_config": {

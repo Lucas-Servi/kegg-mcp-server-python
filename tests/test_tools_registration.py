@@ -97,7 +97,7 @@ def fake_mcp() -> FakeMCP:
 
 
 def test_all_33_tools_register(fake_mcp: FakeMCP) -> None:
-    assert len(fake_mcp.tools) == 33
+    assert len(fake_mcp.tools) == 34
 
 
 def test_every_tool_has_read_only_annotation(fake_mcp: FakeMCP) -> None:
@@ -110,24 +110,23 @@ def test_every_tool_has_read_only_annotation(fake_mcp: FakeMCP) -> None:
 
 def test_server_module_registers_same_33_tools() -> None:
     tools = asyncio.run(real_mcp.list_tools())
-    assert len(tools) == 33
+    assert len(tools) == 34
 
 
 @pytest.mark.parametrize(
-    "tool_name,fixture_file",
+    "tool_name,fixture_file,entry_id",
     [
-        ("get_pathway_info", "pathway_entry.txt"),
-        ("get_gene_info", "gene_entry.txt"),
+        ("get_pathway_info", "pathway_entry.txt", "hsa00010"),
+        ("get_gene_info", "gene_entry.txt", "hsa:1956"),
     ],
 )
 def test_get_info_summary_returns_entry_summary(
-    fake_mcp: FakeMCP, tool_name: str, fixture_file: str
+    fake_mcp: FakeMCP, tool_name: str, fixture_file: str, entry_id: str
 ) -> None:
     fake = FakeKEGG(get_response=(FIXTURES / fixture_file).read_text())
     result = asyncio.run(
         fake_mcp.tools[tool_name](
-            # pathway_id / gene_id positional arg
-            "x",
+            entry_id,
             detail_level="summary",
             ctx=_make_ctx(fake),
         )
@@ -141,7 +140,7 @@ def test_get_pathway_info_full_returns_pathway_info(fake_mcp: FakeMCP) -> None:
 
     fake = FakeKEGG(get_response=(FIXTURES / "pathway_entry.txt").read_text())
     result = asyncio.run(
-        fake_mcp.tools["get_pathway_info"]("x", detail_level="full", ctx=_make_ctx(fake))
+        fake_mcp.tools["get_pathway_info"]("hsa00010", detail_level="full", ctx=_make_ctx(fake))
     )
     assert isinstance(result, PathwayInfo)
 
@@ -176,12 +175,13 @@ def test_search_tool_marks_not_truncated_when_fits(fake_mcp: FakeMCP) -> None:
 
 def test_batch_entry_lookup_rejects_oversize(fake_mcp: FakeMCP) -> None:
     fake = FakeKEGG()
-    with pytest.raises(ValueError, match="Maximum 50"):
-        asyncio.run(
-            fake_mcp.tools["batch_entry_lookup"](
-                entry_ids=[f"C{i:05d}" for i in range(51)], ctx=_make_ctx(fake)
-            )
+    result = asyncio.run(
+        fake_mcp.tools["batch_entry_lookup"](
+            entry_ids=[f"C{i:05d}" for i in range(51)], ctx=_make_ctx(fake)
         )
+    )
+    assert isinstance(result, ErrorResult)
+    assert "Maximum 50" in result.error
 
 
 def test_convert_identifiers_returns_conversion_result(fake_mcp: FakeMCP) -> None:

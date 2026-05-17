@@ -73,17 +73,19 @@ def mcp() -> _FakeMCP:
     return m
 
 
-def test_registers_eight_resource_templates(mcp: _FakeMCP) -> None:
-    assert len(mcp.resources) == 8
+def test_registers_nine_resource_templates(mcp: _FakeMCP) -> None:
+    assert len(mcp.resources) == 9
     assert "kegg://pathway/{pathway_id}" in mcp.resources
+    assert "kegg://pathway/{pathway_id}/ascii" in mcp.resources
     assert "kegg://search/{database}/{query}" in mcp.resources
 
 
-def test_registers_three_prompts(mcp: _FakeMCP) -> None:
+def test_registers_four_prompts(mcp: _FakeMCP) -> None:
     assert set(mcp.prompts) == {
         "pathway_enrichment_analysis",
         "drug_target_investigation",
         "metabolic_pathway_comparison",
+        "visualize_pathway",
     }
 
 

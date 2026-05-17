@@ -14,6 +14,7 @@ from kegg_mcp_server.parsers import (
     summarize_flat_entry,
 )
 from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.validators import validate_drug_id, validate_query
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -52,6 +53,7 @@ def register(mcp: FastMCP) -> None:
             search_type: 'name' (default), 'formula', 'exact_mass', or 'mol_weight'.
             max_results: Maximum number of results to return (capped at 100).
         """
+        query = validate_query(query)
         kegg = ctx.request_context.lifespan_context.kegg
         option = None if search_type == "name" else search_type
         results = parse_tab_list(await kegg.find("drug", query, option=option))
@@ -70,6 +72,7 @@ def register(mcp: FastMCP) -> None:
             drug_id: KEGG drug ID (e.g. 'D00001' for aspirin, 'D00564' for ibuprofen).
             detail_level: 'summary' (default, compact) or 'full' (complete flat-file parse).
         """
+        drug_id = validate_drug_id(drug_id)
         kegg = ctx.request_context.lifespan_context.kegg
         parsed = parse_flat_entry(await kegg.get(drug_id))
         if detail_level == "full":
@@ -87,6 +90,8 @@ def register(mcp: FastMCP) -> None:
             drug_ids: Single drug ID (e.g. 'D00001') or multiple IDs joined with '+'
                 (e.g. 'D00001+D00564'). Max 10 entries.
         """
+        for did in drug_ids.split("+"):
+            validate_drug_id(did.strip())
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.ddi(drug_ids)
         interactions = [

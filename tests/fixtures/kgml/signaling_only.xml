@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!DOCTYPE pathway SYSTEM "https://www.kegg.jp/kegg/xml/KGML_v0.7.2_.dtd">
+<pathway name="path:hsa04010" org="hsa" number="04010" title="MAPK signaling pathway"
+         link="https://www.kegg.jp/kegg-bin/show_pathway?hsa04010" image="https://www.kegg.jp/kegg/pathway/hsa/hsa04010.png">
+    <entry id="1" name="hsa:5594" type="gene">
+        <graphics name="MAPK1" x="100" y="100" type="rectangle" width="46" height="17"/>
+    </entry>
+    <entry id="2" name="hsa:5595" type="gene">
+        <graphics name="MAPK3" x="200" y="100" type="rectangle" width="46" height="17"/>
+    </entry>
+    <entry id="3" name="hsa:5604" type="gene">
+        <graphics name="MAP2K1" x="300" y="200" type="rectangle" width="46" height="17"/>
+    </entry>
+    <entry id="4" name="hsa:673" type="gene">
+        <graphics name="BRAF" x="400" y="200" type="rectangle" width="46" height="17"/>
+    </entry>
+    <relation entry1="1" entry2="2" type="PPrel">
+        <subtype name="activation" value="--&gt;"/>
+    </relation>
+    <relation entry1="2" entry2="3" type="PPrel">
+        <subtype name="phosphorylation" value="+p"/>
+    </relation>
+    <relation entry1="3" entry2="4" type="PPrel">
+        <subtype name="activation" value="--&gt;"/>
+    </relation>
+</pathway>

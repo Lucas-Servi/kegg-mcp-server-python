@@ -27,6 +27,7 @@ async def lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     async with httpx.AsyncClient(
         base_url="https://rest.kegg.jp",
         timeout=30.0,
+        follow_redirects=False,
         headers={"User-Agent": f"kegg-mcp-server/{__version__}"},
     ) as http:
         yield AppContext(kegg=KEGGClient(http, cache))

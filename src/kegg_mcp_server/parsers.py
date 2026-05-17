@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from kegg_mcp_server.sanitize import sanitize_llm_text
+
 # ------------------------------------------------------------------
 # Tab-delimited parsers
 # ------------------------------------------------------------------
@@ -307,8 +309,10 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
         # For sequence sections, skip the numeric length line (first line)
         if section_upper in ("AASEQ", "NTSEQ") and lines and lines[0].strip().isdigit():
             result[section.lower()] = "\n".join(lines[1:]) if len(lines) > 1 else ""
-        else:
+        elif section_upper in ("AASEQ", "NTSEQ"):
             result[section.lower()] = "\n".join(lines)
+        else:
+            result[section.lower()] = sanitize_llm_text("\n".join(lines))
 
     elif section_upper in ("EXACT_MASS", "MOL_WEIGHT"):
         try:
@@ -320,7 +324,7 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
         result["formula"] = lines[0] if lines else ""
 
     elif section_upper == "CLASS":
-        result["cls"] = " ".join(lines)
+        result["cls"] = sanitize_llm_text(" ".join(lines))
 
     elif section_upper == "SYSNAME":
         result["sysname"] = " ".join(lines)
@@ -329,10 +333,10 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
         result["equation"] = " ".join(lines)
 
     elif section_upper == "DEFINITION":
-        result["definition"] = " ".join(lines)
+        result["definition"] = sanitize_llm_text(" ".join(lines))
 
     elif section_upper == "DESCRIPTION":
-        result["description"] = " ".join(lines)
+        result["description"] = sanitize_llm_text(" ".join(lines))
 
     elif section_upper == "ORGANISM":
         result["organism"] = " ".join(lines)

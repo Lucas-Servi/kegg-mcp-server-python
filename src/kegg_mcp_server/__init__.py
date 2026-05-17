@@ -1,3 +1,7 @@
-"""KEGG MCP Server — Python MCP server for the KEGG bioinformatics database."""
+"""KEGG MCP Server — Python MCP server for the KEGG bioinformatics database.
 
-__version__ = "0.2.0"
+Developed by Elytron Biotech. Exposes the KEGG REST API to LLM clients via
+the Model Context Protocol (MCP).
+"""
+
+__version__ = "0.3.0"

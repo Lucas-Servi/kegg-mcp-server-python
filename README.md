@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions/workflows/ci.yml/badge.svg)](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions)
 
-An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **33 tools**, **8 resource templates**, and **3 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.).
+An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **34 tools**, **9 resource templates**, and **4 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.). Developed by **Elytron Biotech**.
 
 Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, KEGG-friendly concurrency limits, structured JSON stderr logging, and batch helpers out of the box. No API key required -- uses the free KEGG REST API.
 
@@ -70,7 +70,7 @@ Download the latest `.mcpb` from the [releases page](https://github.com/Lucas-Se
 
 ## What's included
 
-### 33 Tools
+### 34 Tools
 
 | Category | Tools | Examples |
 |----------|-------|---------|
@@ -87,29 +87,63 @@ Download the latest `.mcpb` from the [releases page](https://github.com/Lucas-Se
 | **Glycans** | `search_glycans`, `get_glycan_info` | Glycan composition, reactions |
 | **BRITE** | `search_brite`, `get_brite_info` | Functional hierarchies |
 | **Cross-database** | `batch_entry_lookup`, `convert_identifiers`, `find_related_entries` | Bulk fetch (up to 50), ID mapping (UniProt, NCBI, ChEBI, PubChem) |
+| **Visualization** | `render_pathway_ascii` | ASCII art rendering of pathway topology (chain or grid mode) |
 
-### 8 Resource Templates
+### 9 Resource Templates
 
 Direct URI-based access to KEGG entities:
 
 ```
-kegg://pathway/{pathway_id}      e.g. kegg://pathway/hsa00010
-kegg://gene/{gene_id}            e.g. kegg://gene/hsa:1956
-kegg://compound/{compound_id}    e.g. kegg://compound/C00002
-kegg://reaction/{reaction_id}    e.g. kegg://reaction/R00756
-kegg://disease/{disease_id}      e.g. kegg://disease/H00004
-kegg://drug/{drug_id}            e.g. kegg://drug/D00001
-kegg://organism/{org_code}       e.g. kegg://organism/hsa
-kegg://search/{database}/{query} e.g. kegg://search/compound/glucose
+kegg://pathway/{pathway_id}        e.g. kegg://pathway/hsa00010
+kegg://gene/{gene_id}              e.g. kegg://gene/hsa:1956
+kegg://compound/{compound_id}      e.g. kegg://compound/C00002
+kegg://reaction/{reaction_id}      e.g. kegg://reaction/R00756
+kegg://disease/{disease_id}        e.g. kegg://disease/H00004
+kegg://drug/{drug_id}              e.g. kegg://drug/D00001
+kegg://organism/{org_code}         e.g. kegg://organism/hsa
+kegg://pathway/{pathway_id}/ascii  e.g. kegg://pathway/hsa00010/ascii
+kegg://search/{database}/{query}   e.g. kegg://search/compound/glucose
 ```
 
-### 3 Guided Prompts
+### 4 Guided Prompts
 
 | Prompt | Arguments | What it does |
 |--------|-----------|--------------|
 | `pathway_enrichment_analysis` | `gene_list`, `organism` | Maps a gene list to KEGG IDs, aggregates pathway associations, identifies enriched pathways |
 | `drug_target_investigation` | `drug_name` | Drug lookup, target identification, pathway mapping, DDI screening |
 | `metabolic_pathway_comparison` | `pathway_id`, `organisms` | Compares gene/compound content of a pathway across species |
+| `visualize_pathway` | `pathway_id`, `organism` | Renders pathway as ASCII art (chain + grid), annotates key steps |
+
+---
+
+## ASCII Pathway Renderer
+
+The `render_pathway_ascii` tool converts KEGG pathway topology (from KGML XML) into LLM-friendly ASCII text. Two styles are available:
+
+**Chain mode** (default) — linear reaction flow:
+
+```
+Glycolysis / Gluconeogenesis (hsa)
+====================================
+
+[alpha-D-Gl~] ──R01786──▶ [beta-D-Gl~] ──R01600──▶ [beta-D-F~]
+```
+
+**Grid mode** — 2D spatial layout using KGML coordinates:
+
+```
+Glycolysis / Gluconeogenesis (hsa)
+====================================
+
+  [Glc]────────▶[G6P]────────▶[F6P]
+                  │
+                  ▼
+                [6PG]
+
+Legend:
+  [Glc] = alpha-D-Glucose (cpd:C00267)
+  [G6P] = D-Glucose 6-phosphate (cpd:C00092)
+```
 
 ---
 

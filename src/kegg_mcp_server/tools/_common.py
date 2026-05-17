@@ -75,5 +75,12 @@ def kegg_tool(fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R | ErrorR
                     "or database name."
                 ),
             )
+        except ValueError as exc:
+            return ErrorResult(
+                error=str(exc),
+                code="validation_error",
+                retryable=False,
+                hint="Check the identifier format and try again.",
+            )
 
     return wrapper

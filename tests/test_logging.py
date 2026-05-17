@@ -63,9 +63,29 @@ def test_setup_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(buf.getvalue().splitlines()) == 1
 
 
-def test_exception_is_serialized(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_exception_serialized_without_traceback_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     buf = io.StringIO()
     monkeypatch.setattr(sys, "stderr", buf)
+    monkeypatch.delenv("KEGG_MCP_LOG_TRACEBACKS", raising=False)
+    setup_logging()
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        logging.getLogger("kegg_mcp_server").exception("caught")
+    payload = json.loads(buf.getvalue().splitlines()[-1])
+    assert payload["exc_type"] == "ValueError"
+    assert payload["exc_msg"] == "boom"
+    assert "exc" not in payload
+
+
+def test_exception_serialized_with_full_traceback(monkeypatch: pytest.MonkeyPatch) -> None:
+    buf = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", buf)
+    monkeypatch.setenv("KEGG_MCP_LOG_TRACEBACKS", "1")
+    # Need to reimport to pick up env change
+    import kegg_mcp_server.logging as log_mod
+
+    monkeypatch.setattr(log_mod, "_LOG_TRACEBACKS", True)
     setup_logging()
     try:
         raise ValueError("boom")

@@ -99,6 +99,22 @@ def register_resources(mcp: FastMCP) -> None:
         items = parse_tab_list(raw)
         return json.dumps({"organism": org_code, "pathways": items, "count": len(items)}, indent=2)
 
+    @mcp.resource("kegg://pathway/{pathway_id}/ascii")
+    async def pathway_ascii_resource(pathway_id: str, ctx: Context = None) -> str:
+        """Render a KEGG pathway as ASCII text (chain mode).
+
+        Args:
+            pathway_id: KEGG pathway ID (e.g. hsa00010).
+        """
+        from kegg_mcp_server.ascii import parse_kgml, render_chain
+
+        kegg = ctx.request_context.lifespan_context.kegg
+        kgml_xml = await kegg.get(pathway_id, option="kgml")
+        if not kgml_xml.strip():
+            return f"No KGML data available for pathway {pathway_id}"
+        pathway = parse_kgml(kgml_xml)
+        return render_chain(pathway)
+
     @mcp.resource("kegg://search/{database}/{query}")
     async def search_resource(database: str, query: str, ctx: Context = None) -> str:
         """Search any KEGG database and return results as JSON.

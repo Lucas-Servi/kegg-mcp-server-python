@@ -39,6 +39,7 @@ dependencies = [
     "pydantic>=2.0",
     "cachetools>=5.3",
     "tenacity>=8.2",
+    "defusedxml>=0.7",
 ]
 
 [project.optional-dependencies]

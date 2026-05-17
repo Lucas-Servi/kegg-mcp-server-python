@@ -40,6 +40,9 @@ _RESERVED_LOG_ATTRS = frozenset(
 )
 
 
+_LOG_TRACEBACKS = os.getenv("KEGG_MCP_LOG_TRACEBACKS", "0") == "1"
+
+
 class _JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
@@ -53,7 +56,12 @@ class _JsonFormatter(logging.Formatter):
                 continue
             payload[key] = value
         if record.exc_info:
-            payload["exc"] = self.formatException(record.exc_info)
+            if _LOG_TRACEBACKS:
+                payload["exc"] = self.formatException(record.exc_info)
+            else:
+                exc_type, exc_val, _ = record.exc_info
+                payload["exc_type"] = exc_type.__name__ if exc_type else None
+                payload["exc_msg"] = str(exc_val) if exc_val else None
         return json.dumps(payload, default=str)
 
 

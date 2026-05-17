@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 def register_all_tools(mcp: FastMCP) -> None:
     from kegg_mcp_server.tools import (
+        ascii_pathway,
         brite,
         compounds,
         cross_db,
@@ -37,5 +38,6 @@ def register_all_tools(mcp: FastMCP) -> None:
         glycans,
         brite,
         cross_db,
+        ascii_pathway,
     ]:
         mod.register(mcp)

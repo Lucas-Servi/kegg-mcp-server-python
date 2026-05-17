@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import time
 from typing import TYPE_CHECKING
@@ -24,7 +25,19 @@ _KEGG_SEMAPHORE = asyncio.Semaphore(3)
 
 _RETRIABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 
+_MAX_RESPONSE_BYTES = 25 * 1024 * 1024  # 25 MB
+
 logger = logging.getLogger("kegg_mcp_server.client")
+
+
+def _redact_path(path: str) -> str:
+    """Keep the KEGG operation prefix, replace user-supplied segment with a hash."""
+    parts = path.strip("/").split("/", 1)
+    if len(parts) < 2:
+        return path
+    op = parts[0]
+    payload_hash = hashlib.sha1(parts[1].encode()).hexdigest()[:8]
+    return f"/{op}/sha1:{payload_hash}"
 
 
 def _should_retry(exc: BaseException) -> bool:
@@ -137,20 +150,34 @@ class KEGGClient:
                 logger.warning(
                     "kegg http error",
                     extra={
-                        "path": path,
+                        "path": _redact_path(path),
                         "status": resp.status_code,
                         "duration_ms": duration_ms,
                         "cache_hit": False,
                     },
                 )
                 raise
+            content_length = resp.headers.get("content-length")
+            if content_length and int(content_length) > _MAX_RESPONSE_BYTES:
+                raise KEGGAPIError(
+                    f"Response too large ({content_length} bytes, limit {_MAX_RESPONSE_BYTES})",
+                    path=path,
+                    retryable=False,
+                )
+            text = resp.text
+            if len(text.encode("utf-8")) > _MAX_RESPONSE_BYTES:
+                raise KEGGAPIError(
+                    f"Response body exceeds {_MAX_RESPONSE_BYTES} byte limit",
+                    path=path,
+                    retryable=False,
+                )
             logger.info(
                 "kegg request",
                 extra={
-                    "path": path,
+                    "path": _redact_path(path),
                     "status": resp.status_code,
                     "duration_ms": duration_ms,
                     "cache_hit": False,
                 },
             )
-            return resp.text
+            return text

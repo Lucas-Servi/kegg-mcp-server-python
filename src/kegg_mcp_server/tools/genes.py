@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+import httpx
 from mcp.server.fastmcp import Context
 
+from kegg_mcp_server.errors import KEGGAPIError
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.gene import GeneInfo
@@ -14,6 +16,7 @@ from kegg_mcp_server.parsers import (
     summarize_flat_entry,
 )
 from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.validators import validate_gene_id, validate_organism_code, validate_query
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -54,6 +57,8 @@ def register(mcp: FastMCP) -> None:
             organism_code: KEGG organism code (e.g. 'hsa' human, 'mmu' mouse, 'eco' E. coli).
             max_results: Maximum number of results to return (capped at 100).
         """
+        query = validate_query(query)
+        organism_code = validate_organism_code(organism_code)
         kegg = ctx.request_context.lifespan_context.kegg
         results = parse_tab_list(await kegg.find(organism_code, query))
         return build_search_result(query, organism_code, results, max_results)
@@ -75,6 +80,7 @@ def register(mcp: FastMCP) -> None:
             include_sequence: If True and detail_level='full', fetches amino acid and
                 nucleotide sequences.
         """
+        gene_id = validate_gene_id(gene_id)
         kegg = ctx.request_context.lifespan_context.kegg
         parsed = parse_flat_entry(await kegg.get(gene_id))
         if detail_level != "full":
@@ -87,7 +93,7 @@ def register(mcp: FastMCP) -> None:
                 nt_raw = await kegg.get(gene_id, option="ntseq")
                 info.aaseq = "".join(aa_raw.splitlines()[1:])
                 info.ntseq = "".join(nt_raw.splitlines()[1:])
-            except Exception:
+            except (httpx.HTTPError, KEGGAPIError):
                 pass
         return info
 
@@ -99,6 +105,7 @@ def register(mcp: FastMCP) -> None:
         Args:
             gene_id: KEGG gene ID (e.g. 'hsa:1956').
         """
+        gene_id = validate_gene_id(gene_id)
         kegg = ctx.request_context.lifespan_context.kegg
         ko_pairs = parse_link_response(await kegg.link("ko", gene_id))
         ko_ids = [b for _, b in ko_pairs]
@@ -107,7 +114,7 @@ def register(mcp: FastMCP) -> None:
             try:
                 orth_pairs = parse_link_response(await kegg.link("genes", ko_id))
                 orthologs[ko_id] = [{"source": a, "target": b} for a, b in orth_pairs]
-            except Exception:
+            except (httpx.HTTPError, KEGGAPIError):
                 orthologs[ko_id] = []
         return {
             "gene_id": gene_id,

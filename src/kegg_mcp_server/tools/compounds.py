@@ -14,6 +14,7 @@ from kegg_mcp_server.parsers import (
     summarize_flat_entry,
 )
 from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.validators import validate_compound_id, validate_query
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -52,6 +53,7 @@ def register(mcp: FastMCP) -> None:
             search_type: 'name' (default), 'formula', 'exact_mass', 'mol_weight', or 'nop'.
             max_results: Maximum number of results to return (capped at 100).
         """
+        query = validate_query(query)
         kegg = ctx.request_context.lifespan_context.kegg
         option = None if search_type == "name" else search_type
         results = parse_tab_list(await kegg.find("compound", query, option=option))
@@ -70,6 +72,7 @@ def register(mcp: FastMCP) -> None:
             compound_id: KEGG compound ID (e.g. 'C00002' for ATP, 'C00031' for D-Glucose).
             detail_level: 'summary' (default, compact) or 'full' (complete flat-file parse).
         """
+        compound_id = validate_compound_id(compound_id)
         kegg = ctx.request_context.lifespan_context.kegg
         parsed = parse_flat_entry(await kegg.get(compound_id))
         if detail_level == "full":
@@ -86,6 +89,7 @@ def register(mcp: FastMCP) -> None:
         Args:
             compound_id: KEGG compound ID (e.g. 'C00002').
         """
+        compound_id = validate_compound_id(compound_id)
         kegg = ctx.request_context.lifespan_context.kegg
         pairs = parse_link_response(await kegg.link("reaction", compound_id))
         return {

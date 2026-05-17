@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from kegg_mcp_server.errors import KEGGAPIError
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.tools._common import kegg_tool
@@ -42,13 +40,16 @@ async def test_kegg_tool_converts_non_retryable_error_to_error_result() -> None:
     assert "check the identifier" in (result.hint or "").lower()
 
 
-async def test_kegg_tool_does_not_swallow_other_exceptions() -> None:
+async def test_kegg_tool_converts_value_error_to_error_result() -> None:
     @kegg_tool
     async def fail() -> str:
         raise ValueError("something else")
 
-    with pytest.raises(ValueError, match="something else"):
-        await fail()
+    result = await fail()
+    assert isinstance(result, ErrorResult)
+    assert result.code == "validation_error"
+    assert "something else" in result.error
+    assert result.retryable is False
 
 
 def test_error_result_has_stable_code_default() -> None:

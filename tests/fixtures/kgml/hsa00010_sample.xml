@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!DOCTYPE pathway SYSTEM "https://www.kegg.jp/kegg/xml/KGML_v0.7.2_.dtd">
+<pathway name="path:hsa00010" org="hsa" number="00010" title="Glycolysis / Gluconeogenesis"
+         link="https://www.kegg.jp/kegg-bin/show_pathway?hsa00010" image="https://www.kegg.jp/kegg/pathway/hsa/hsa00010.png">
+    <entry id="1" name="cpd:C00031" type="compound">
+        <graphics name="D-Glucose" x="100" y="200" type="circle" width="8" height="8"/>
+    </entry>
+    <entry id="2" name="cpd:C00668" type="compound">
+        <graphics name="G6P" x="200" y="200" type="circle" width="8" height="8"/>
+    </entry>
+    <entry id="3" name="cpd:C00085" type="compound">
+        <graphics name="F6P" x="300" y="200" type="circle" width="8" height="8"/>
+    </entry>
+    <entry id="4" name="hsa:2645" type="gene">
+        <graphics name="GCK" x="150" y="150" type="rectangle" width="46" height="17"/>
+    </entry>
+    <entry id="5" name="hsa:5213" type="gene">
+        <graphics name="PFKM" x="250" y="150" type="rectangle" width="46" height="17"/>
+    </entry>
+    <entry id="6" name="hsa:2821" type="gene">
+        <graphics name="GPI" x="350" y="150" type="rectangle" width="46" height="17"/>
+    </entry>
+    <reaction id="4" name="rn:R00299" type="irreversible">
+        <substrate id="1" name="cpd:C00031"/>
+        <product id="2" name="cpd:C00668"/>
+    </reaction>
+    <reaction id="5" name="rn:R00756" type="irreversible">
+        <substrate id="2" name="cpd:C00668"/>
+        <product id="3" name="cpd:C00085"/>
+    </reaction>
+    <reaction id="6" name="rn:R00771" type="reversible">
+        <substrate id="3" name="cpd:C00085"/>
+        <product id="1" name="cpd:C00031"/>
+    </reaction>
+    <relation entry1="4" entry2="5" type="ECrel">
+        <subtype name="compound" value="2"/>
+    </relation>
+    <relation entry1="5" entry2="6" type="ECrel">
+        <subtype name="compound" value="3"/>
+    </relation>
+</pathway>
