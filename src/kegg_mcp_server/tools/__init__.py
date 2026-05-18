@@ -25,19 +25,19 @@ def register_all_tools(mcp: FastMCP) -> None:
     )
 
     for mod in [
-        database,
-        pathways,
-        genes,
+        ascii_pathway,
+        brite,
         compounds,
-        reactions,
-        enzymes,
+        cross_db,
+        database,
         diseases,
         drugs,
+        enzymes,
+        genes,
+        glycans,
         modules,
         orthology,
-        glycans,
-        brite,
-        cross_db,
-        ascii_pathway,
+        pathways,
+        reactions,
     ]:
         mod.register(mcp)
