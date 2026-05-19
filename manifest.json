@@ -180,17 +180,6 @@
       "description": "Render a KEGG pathway as LLM-friendly ASCII art (chain or grid mode)."
     }
   ],
-  "resources": [
-    {"uri": "kegg://pathway/{pathway_id}", "description": "KEGG pathway entry as JSON."},
-    {"uri": "kegg://gene/{gene_id}", "description": "KEGG gene entry as JSON."},
-    {"uri": "kegg://compound/{compound_id}", "description": "KEGG compound entry as JSON."},
-    {"uri": "kegg://reaction/{reaction_id}", "description": "KEGG reaction entry as JSON."},
-    {"uri": "kegg://disease/{disease_id}", "description": "KEGG disease entry as JSON."},
-    {"uri": "kegg://drug/{drug_id}", "description": "KEGG drug entry as JSON."},
-    {"uri": "kegg://organism/{org_code}", "description": "Pathways for a KEGG organism."},
-    {"uri": "kegg://pathway/{pathway_id}/ascii", "description": "ASCII art rendering of a KEGG pathway."},
-    {"uri": "kegg://search/{database}/{query}", "description": "Search any KEGG database."}
-  ],
   "prompts": [
     {
       "name": "pathway_enrichment_analysis",
