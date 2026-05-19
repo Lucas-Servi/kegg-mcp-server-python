@@ -36,7 +36,7 @@ def _redact_path(path: str) -> str:
     if len(parts) < 2:
         return path
     op = parts[0]
-    payload_hash = hashlib.sha1(parts[1].encode()).hexdigest()[:8]
+    payload_hash = hashlib.sha1(parts[1].encode(), usedforsecurity=False).hexdigest()[:8]
     return f"/{op}/sha1:{payload_hash}"
 
 
