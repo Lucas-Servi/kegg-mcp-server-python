@@ -62,6 +62,12 @@ Add to your `claude_desktop_config.json`:
 claude mcp add kegg-mcp-server -- uvx kegg-mcp-server
 ```
 
+Or install as a plugin (includes skill metadata):
+
+```bash
+claude plugin install Lucas-Servi/kegg-mcp-server-python
+```
+
 ### MCPB bundle (Claude Desktop, no Python required)
 
 Download the latest `.mcpb` from the [releases page](https://github.com/Lucas-Servi/kegg-mcp-server-python/releases) and drag it onto Claude Desktop. The bundle vendors all Python dependencies and runs with Claude Desktop's embedded Python.

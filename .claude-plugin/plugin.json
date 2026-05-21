@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "kegg-mcp-server",
+  "displayName": "KEGG MCP Server",
+  "version": "0.3.0",
+  "description": "Query the KEGG bioinformatics database (pathways, genes, compounds, drugs, and more) via the public KEGG REST API. 34 tools, 9 resource templates, 4 guided prompts. No API key required.",
+  "author": {
+    "name": "Lucas Servi",
+    "email": "lucasservi@gmail.com",
+    "url": "https://github.com/Lucas-Servi"
+  },
+  "homepage": "https://github.com/Lucas-Servi/kegg-mcp-server-python",
+  "repository": "https://github.com/Lucas-Servi/kegg-mcp-server-python",
+  "license": "MIT",
+  "keywords": [
+    "kegg",
+    "bioinformatics",
+    "pathways",
+    "genomics",
+    "metabolomics",
+    "systems-biology",
+    "mcp",
+    "science"
+  ]
+}
