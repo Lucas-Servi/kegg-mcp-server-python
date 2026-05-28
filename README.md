@@ -62,11 +62,21 @@ Add to your `claude_desktop_config.json`:
 claude mcp add kegg-mcp-server -- uvx kegg-mcp-server
 ```
 
-Or install as a plugin (includes skill metadata):
+Or install as a plugin (includes slash commands, agent, and skill):
 
 ```bash
 claude plugin install Lucas-Servi/kegg-mcp-server-python
 ```
+
+The plugin bundles:
+
+| Type | Name | Description |
+|------|------|-------------|
+| Command | `/kegg <query>` | Quick search across all KEGG databases |
+| Command | `/kegg-pathway <id>` | Pathway deep-dive with ASCII visualization |
+| Command | `/kegg-drug <name>` | Drug targets, pathways, and interactions |
+| Agent | `kegg-bioinformatics` | Auto-invoked for biological pathway/gene/drug questions |
+| Skill | `kegg-analysis` | Multi-step workflow guide (enrichment, comparison, investigation) |
 
 ### MCPB bundle (Claude Desktop, no Python required)
 
