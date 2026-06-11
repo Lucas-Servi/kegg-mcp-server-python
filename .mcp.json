@@ -1,6 +1,8 @@
 {
-  "kegg": {
-    "command": "uvx",
-    "args": ["kegg-mcp-server"]
+  "mcpServers": {
+    "kegg": {
+      "command": "uvx",
+      "args": ["kegg-mcp-server"]
+    }
   }
 }
