@@ -4,13 +4,13 @@
     "name": "Lucas Servi",
     "email": "lucasservi@gmail.com"
   },
-  "description": "Query the KEGG bioinformatics database — pathways, genes, compounds, drugs, enzymes, diseases, reactions, and more via 34 read-only MCP tools. No API key required.",
+  "description": "Query KEGG via 34 read-only MCP tools. No API key required; terms: https://www.kegg.jp/kegg/rest/.",
   "plugins": [
     {
       "name": "kegg-mcp-server",
       "source": ".",
-      "description": "Query the KEGG bioinformatics database via 34 MCP tools. No API key required.",
-      "version": "0.3.0",
+      "description": "Query KEGG via 34 MCP tools. No API key required; terms: https://www.kegg.jp/kegg/rest/.",
+      "version": "0.3.1",
       "author": {
         "name": "Lucas Servi"
       },

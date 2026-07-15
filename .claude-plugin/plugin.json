@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "kegg-mcp-server",
   "displayName": "KEGG MCP Server",
-  "version": "0.3.0",
-  "description": "Query the KEGG bioinformatics database (pathways, genes, compounds, drugs, and more) via the public KEGG REST API. 34 tools, 9 resource templates, 4 guided prompts. No API key required.",
+  "version": "0.3.1",
+  "description": "Query KEGG through 34 tools, 9 resources, and 4 prompts. No API key required; terms: https://www.kegg.jp/kegg/rest/.",
   "author": {
     "name": "Lucas Servi",
     "email": "lucasservi@gmail.com",

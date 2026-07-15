@@ -16,32 +16,72 @@ DRUG_ID = re.compile(r"^(dr:)?D\d{5}$")
 MODULE_ID = re.compile(r"^(md:)?M\d{5}$")
 GLYCAN_ID = re.compile(r"^(gl:)?G\d{5}$")
 BRITE_ID = re.compile(r"^(br:)?(br|ko|[a-z]{3,4})\d{5}$")
+KEGG_DATABASE_IDENTIFIER = re.compile(r"^(?:[a-z]{3,4}|T\d{5})$")
 
-DATABASE_ALLOWLIST = frozenset(
+INFO_DATABASES = frozenset(
+    {
+        "kegg",
+        "pathway",
+        "brite",
+        "module",
+        "ko",
+        "genes",
+        "ag",
+        "vg",
+        "vp",
+        "genome",
+        "vtax",
+        "vgenome",
+        "compound",
+        "glycan",
+        "reaction",
+        "rclass",
+        "rmodule",
+        "enzyme",
+        "network",
+        "ntmap",
+        "variant",
+        "disease",
+        "drug",
+        "dgroup",
+    }
+)
+
+LINK_DATABASES = frozenset(
     {
         "pathway",
         "brite",
         "module",
         "ko",
-        "genome",
-        "vg",
+        "genes",
         "ag",
+        "vg",
+        "vp",
+        "genome",
+        "vtax",
+        "vgenome",
         "compound",
         "glycan",
         "reaction",
         "rclass",
+        "rmodule",
         "enzyme",
         "network",
+        "ntmap",
         "variant",
         "disease",
         "drug",
         "dgroup",
-        "organism",
-        "genes",
-        "ligand",
-        "kegg",
+        "pubmed",
+        "taxonomy",
+        "atc",
+        "jtc",
+        "ndc",
+        "yk",
     }
 )
+
+_RESERVED_DATABASE_NAMES = INFO_DATABASES | LINK_DATABASES | {"organism", "ligand"}
 
 _QUERY_MAX_LEN = 200
 _QUERY_ILLEGAL = re.compile(r"[\x00-\x1f\x7f<>{}|\\^`]")
@@ -117,16 +157,29 @@ def validate_organism_code(code: str) -> str:
     return code
 
 
-def validate_database(db: str) -> str:
-    """Validate that the database name is in the KEGG allowlist."""
-    db = db.strip().lower()
-    if not db:
+def _validate_operation_database(db: str, allowed: frozenset[str], operation: str) -> str:
+    value = db.strip()
+    if not value:
         raise ValueError("Database name must not be empty")
-    if db not in DATABASE_ALLOWLIST:
-        raise ValueError(
-            f"Unknown KEGG database: {db!r} — allowed: {sorted(DATABASE_ALLOWLIST)}"
-        )
-    return db
+    normalized = value.lower()
+    if normalized in allowed:
+        return normalized
+    if normalized in _RESERVED_DATABASE_NAMES:
+        raise ValueError(f"Database {db!r} is not supported by the KEGG {operation} operation")
+    dynamic = value.upper() if re.fullmatch(r"t\d{5}", value, re.IGNORECASE) else normalized
+    if KEGG_DATABASE_IDENTIFIER.fullmatch(dynamic):
+        return dynamic
+    raise ValueError(f"Unknown KEGG database for {operation}: {db!r}")
+
+
+def validate_info_database(db: str) -> str:
+    """Validate a database accepted by KEGG's info operation."""
+    return _validate_operation_database(db, INFO_DATABASES, "info")
+
+
+def validate_link_database(db: str) -> str:
+    """Validate a target database accepted by KEGG's link operation."""
+    return _validate_operation_database(db, LINK_DATABASES, "link")
 
 
 def validate_query(query: str, *, max_len: int = _QUERY_MAX_LEN) -> str:

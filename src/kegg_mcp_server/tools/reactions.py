@@ -8,7 +8,12 @@ from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.reaction import ReactionInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
-from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.tools._common import (
+    READ_ONLY,
+    build_search_result,
+    kegg_tool,
+    not_found_result,
+)
 from kegg_mcp_server.validators import validate_query, validate_reaction_id
 
 if TYPE_CHECKING:
@@ -63,7 +68,10 @@ def register(mcp: FastMCP) -> None:
         """
         reaction_id = validate_reaction_id(reaction_id)
         kegg = ctx.request_context.lifespan_context.kegg
-        parsed = parse_flat_entry(await kegg.get(reaction_id))
+        raw = await kegg.get(reaction_id)
+        if not raw.strip():
+            return not_found_result("reaction", reaction_id)
+        parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)
         return EntrySummary(**summarize_flat_entry(parsed))

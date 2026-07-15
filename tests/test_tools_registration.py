@@ -145,6 +145,85 @@ def test_get_pathway_info_full_returns_pathway_info(fake_mcp: FakeMCP) -> None:
     assert isinstance(result, PathwayInfo)
 
 
+@pytest.mark.parametrize(
+    "tool_name,entry_id",
+    [
+        ("get_pathway_info", "hsa00010"),
+        ("get_gene_info", "hsa:1956"),
+        ("get_compound_info", "C00002"),
+        ("get_reaction_info", "R00756"),
+        ("get_enzyme_info", "1.1.1.1"),
+        ("get_disease_info", "H00004"),
+        ("get_drug_info", "D00001"),
+        ("get_module_info", "M00001"),
+        ("get_ko_info", "K00844"),
+        ("get_glycan_info", "G00001"),
+        ("get_brite_info", "br00001"),
+    ],
+)
+def test_get_info_empty_response_returns_not_found(
+    fake_mcp: FakeMCP, tool_name: str, entry_id: str
+) -> None:
+    result = asyncio.run(fake_mcp.tools[tool_name](entry_id, ctx=_make_ctx(FakeKEGG())))
+
+    assert isinstance(result, ErrorResult)
+    assert result.code == "not_found"
+    assert result.status == 404
+    assert result.retryable is False
+    assert entry_id in result.error
+
+
+def test_get_gene_info_omits_sequences_unless_requested(fake_mcp: FakeMCP) -> None:
+    from kegg_mcp_server.models.gene import GeneInfo
+
+    fake = FakeKEGG(get_response=(FIXTURES / "gene_entry.txt").read_text())
+    result = asyncio.run(
+        fake_mcp.tools["get_gene_info"](
+            "hsa:1956",
+            detail_level="full",
+            include_sequence=False,
+            ctx=_make_ctx(fake),
+        )
+    )
+
+    assert isinstance(result, GeneInfo)
+    assert result.aaseq is None
+    assert result.ntseq is None
+
+
+def test_get_gene_info_fetches_only_missing_requested_sequence(fake_mcp: FakeMCP) -> None:
+    from kegg_mcp_server.models.gene import GeneInfo
+
+    class PartialSequenceKEGG(FakeKEGG):
+        def __init__(self) -> None:
+            super().__init__()
+            self.options: list[str | None] = []
+
+        async def get(self, _dbentries: str, option: str | None = None) -> str:
+            self.options.append(option)
+            if option == "ntseq":
+                return ">hsa:1956\nATGGCC"
+            return (
+                "ENTRY       1956      CDS\nNAME        EGFR\n"
+                "AASEQ       3\n            MAA\n///"
+            )
+
+    fake = PartialSequenceKEGG()
+    result = asyncio.run(
+        fake_mcp.tools["get_gene_info"](
+            "hsa:1956",
+            detail_level="full",
+            include_sequence=True,
+            ctx=_make_ctx(fake),
+        )
+    )
+
+    assert isinstance(result, GeneInfo)
+    assert result.aaseq == "MAA"
+    assert result.ntseq == "ATGGCC"
+    assert fake.options == [None, "ntseq"]
+
+
 def test_search_tool_applies_max_results_cap(fake_mcp: FakeMCP) -> None:
     # 200 fake rows should be clamped to MAX_ENTRIES_CAP (100) when max_results > cap
     rows = "\n".join(f"item{i}\tdescription{i}" for i in range(200))

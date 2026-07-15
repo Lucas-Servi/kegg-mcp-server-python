@@ -8,7 +8,7 @@ from kegg_mcp_server.models.common import BatchLookupResult, ConversionResult, L
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_conv_response, parse_link_response, parse_multi_flat
 from kegg_mcp_server.tools._common import READ_ONLY, kegg_tool
-from kegg_mcp_server.validators import validate_database
+from kegg_mcp_server.validators import validate_link_database
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -72,7 +72,7 @@ def register(mcp: FastMCP) -> None:
             target_db: Target database (e.g. 'pathway', 'disease', 'drug', 'ko',
                 'compound', 'reaction', 'module', 'genes').
         """
-        target_db = validate_database(target_db)
+        target_db = validate_link_database(target_db)
         kegg = ctx.request_context.lifespan_context.kegg
         pairs = parse_link_response(await kegg.link(target_db, entry_id))
         return LinkResult(source=entry_id, target_db=target_db, pairs=pairs, count=len(pairs))

@@ -15,7 +15,12 @@ from kegg_mcp_server.parsers import (
     parse_tab_list,
     summarize_flat_entry,
 )
-from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.tools._common import (
+    READ_ONLY,
+    build_search_result,
+    kegg_tool,
+    not_found_result,
+)
 from kegg_mcp_server.validators import validate_gene_id, validate_organism_code, validate_query
 
 if TYPE_CHECKING:
@@ -82,17 +87,30 @@ def register(mcp: FastMCP) -> None:
         """
         gene_id = validate_gene_id(gene_id)
         kegg = ctx.request_context.lifespan_context.kegg
-        parsed = parse_flat_entry(await kegg.get(gene_id))
+        raw = await kegg.get(gene_id)
+        if not raw.strip():
+            return not_found_result("gene", gene_id)
+        parsed = parse_flat_entry(raw)
         if detail_level != "full":
             return EntrySummary(**summarize_flat_entry(parsed))
 
         info = _build(parsed)
-        if include_sequence and info.aaseq is None:
+        if not include_sequence:
+            info.aaseq = None
+            info.ntseq = None
+            return info
+        if info.aaseq is None:
             try:
                 aa_raw = await kegg.get(gene_id, option="aaseq")
+                if aa_raw.strip():
+                    info.aaseq = "".join(aa_raw.splitlines()[1:])
+            except (httpx.HTTPError, KEGGAPIError):
+                pass
+        if info.ntseq is None:
+            try:
                 nt_raw = await kegg.get(gene_id, option="ntseq")
-                info.aaseq = "".join(aa_raw.splitlines()[1:])
-                info.ntseq = "".join(nt_raw.splitlines()[1:])
+                if nt_raw.strip():
+                    info.ntseq = "".join(nt_raw.splitlines()[1:])
             except (httpx.HTTPError, KEGGAPIError):
                 pass
         return info

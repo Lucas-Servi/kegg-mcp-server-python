@@ -8,8 +8,8 @@ class ErrorResult(BaseModel):
 
     A tool returns this instead of raising so the model can reason about
     the failure and decide whether to retry, change inputs, or give up.
-    A 404 (entry not found / empty search) is NOT an error — tools return
-    their usual empty result shape in that case.
+    A point lookup that receives a 404 uses code ``not_found``; an empty search
+    remains a successful result with no items.
     """
 
     error: str

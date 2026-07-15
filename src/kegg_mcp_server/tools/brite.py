@@ -8,7 +8,12 @@ from kegg_mcp_server.models.brite import BriteInfo
 from kegg_mcp_server.models.common import EntrySummary, SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
-from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.tools._common import (
+    READ_ONLY,
+    build_search_result,
+    kegg_tool,
+    not_found_result,
+)
 from kegg_mcp_server.validators import validate_brite_id, validate_query
 
 if TYPE_CHECKING:
@@ -50,6 +55,8 @@ def register(mcp: FastMCP) -> None:
         brite_id = validate_brite_id(brite_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(brite_id)
+        if not raw.strip():
+            return not_found_result("BRITE entry", brite_id)
         parsed = parse_flat_entry(raw)
         if detail_level != "full":
             return EntrySummary(**summarize_flat_entry(parsed))

@@ -43,6 +43,44 @@ jobs:
           fail_ci_if_error: false
           files: ./.coverage
 
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Build with unrelated untracked content present
+        run: |
+          mkdir -p unexpected-untracked
+          echo "must not ship" > unexpected-untracked/sentinel.txt
+          uv build
+
+      - name: Validate distribution contents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tarfile
+
+          sdist = next(Path("dist").glob("*.tar.gz"))
+          if sdist.stat().st_size > 2 * 1024 * 1024:
+              raise SystemExit(f"sdist unexpectedly large: {sdist.stat().st_size} bytes")
+          with tarfile.open(sdist) as archive:
+              names = archive.getnames()
+          forbidden = ("unexpected-untracked", "buildwithclaude", "node_modules", ".git")
+          leaked = [name for name in names if any(part in name.split("/") for part in forbidden)]
+          if leaked:
+              raise SystemExit(f"unexpected sdist content: {leaked[:10]}")
+          PY
+          uv pip install --system dist/*.whl
+          python -c "import json; import kegg_mcp_server; assert kegg_mcp_server.__version__ == json.load(open('manifest.json'))['version']"
+
   security:
     runs-on: ubuntu-latest
     steps:

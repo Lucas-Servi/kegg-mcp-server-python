@@ -40,7 +40,8 @@ mcp = FastMCP(
         "Bioinformatics server for querying the KEGG database. "
         "Provides tools for pathways, genes, compounds, reactions, enzymes, "
         "diseases, drugs, modules, orthology (KO), glycans, and BRITE hierarchies. "
-        "Uses the free KEGG REST API at https://rest.kegg.jp — no API key required."
+        "Uses the unauthenticated KEGG REST API at https://rest.kegg.jp. "
+        "KEGG limits API use to academic users; review its non-academic-use guidance."
     ),
 )
 

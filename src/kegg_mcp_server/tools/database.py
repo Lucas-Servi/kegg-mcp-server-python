@@ -8,7 +8,7 @@ from kegg_mcp_server.models.common import ListResult
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.organism import DatabaseInfo
 from kegg_mcp_server.tools._common import READ_ONLY, kegg_tool
-from kegg_mcp_server.validators import validate_database
+from kegg_mcp_server.validators import validate_info_database
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -26,7 +26,7 @@ def register(mcp: FastMCP) -> None:
         Args:
             database: Database name (e.g. 'kegg', 'pathway', 'compound', 'drug', 'genome').
         """
-        database = validate_database(database)
+        database = validate_info_database(database)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.info(database)
         release = None

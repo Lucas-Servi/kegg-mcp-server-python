@@ -8,7 +8,12 @@ from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.enzyme import EnzymeInfo
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
-from kegg_mcp_server.tools._common import READ_ONLY, build_search_result, kegg_tool
+from kegg_mcp_server.tools._common import (
+    READ_ONLY,
+    build_search_result,
+    kegg_tool,
+    not_found_result,
+)
 from kegg_mcp_server.validators import validate_enzyme_id, validate_query
 
 if TYPE_CHECKING:
@@ -67,7 +72,10 @@ def register(mcp: FastMCP) -> None:
         enzyme_id = validate_enzyme_id(enzyme_id)
         kegg = ctx.request_context.lifespan_context.kegg
         entry_id = enzyme_id if enzyme_id.startswith("ec:") else f"ec:{enzyme_id}"
-        parsed = parse_flat_entry(await kegg.get(entry_id))
+        raw = await kegg.get(entry_id)
+        if not raw.strip():
+            return not_found_result("enzyme", enzyme_id, path_identifier=entry_id)
+        parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)
         return EntrySummary(**summarize_flat_entry(parsed))

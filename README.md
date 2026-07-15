@@ -7,11 +7,11 @@
 
 An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **34 tools**, **9 resource templates**, and **4 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.). Developed by **Elytron Biotech**.
 
-Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, KEGG-friendly concurrency limits, structured JSON stderr logging, and batch helpers out of the box. No API key required -- uses the free KEGG REST API.
+Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, a three-request-per-second rate limit, structured JSON stderr logging, and batch helpers out of the box. No API key is required.
 
 Responses are token-aware by default: `get_*_info` tools return a compact `EntrySummary` (entry id, name, class, description, counts of linked entities) unless you pass `detail_level="full"`. Errors are returned as a typed `ErrorResult` the model can reason about, not raised as exceptions.
 
-> **Note:** This is a community non-official project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories.
+> **Usage notice:** This is a community project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories. [KEGG states that its REST API is for academic use by academic users](https://www.kegg.jp/kegg/rest/); non-academic users must follow KEGG's linked non-academic-use guidance. Users are responsible for ensuring that their use complies with those terms.
 
 ---
 
@@ -78,9 +78,9 @@ The plugin bundles:
 | Agent | `kegg-bioinformatics` | Auto-invoked for biological pathway/gene/drug questions |
 | Skill | `kegg-analysis` | Multi-step workflow guide (enrichment, comparison, investigation) |
 
-### MCPB bundle (Claude Desktop, no Python required)
+### MCPB bundle (Linux x86-64 only, no Python install required)
 
-Download the latest `.mcpb` from the [releases page](https://github.com/Lucas-Servi/kegg-mcp-server-python/releases) and drag it onto Claude Desktop. The bundle vendors all Python dependencies and runs with Claude Desktop's embedded Python.
+The release bundle is built specifically for Linux x86-64 and CPython 3.12 because it vendors native dependencies. Download the `linux-x86_64-py312.mcpb` artifact from the [releases page](https://github.com/Lucas-Servi/kegg-mcp-server-python/releases) and drag it onto Claude Desktop. On macOS or Windows, use the cross-platform `uvx`, pip, or Claude Code plugin installation above.
 
 ---
 

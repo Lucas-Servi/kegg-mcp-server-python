@@ -25,6 +25,26 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Validate tag matches package version
+        id: version
+        run: |
+          PACKAGE_VERSION="$(python - <<'PY'
+          from pathlib import Path
+
+          version = next(
+              line.split("=", 1)[1].strip().strip('"').strip("'")
+              for line in Path("src/kegg_mcp_server/__init__.py").read_text().splitlines()
+              if line.startswith("__version__")
+          )
+          print(version)
+          PY
+          )"
+          echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_NAME#v}" != "${PACKAGE_VERSION}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package version ${PACKAGE_VERSION}"
+            exit 1
+          fi
+
       - name: Stage bundle layout
         run: |
           mkdir -p build/server/src build/server/vendor
@@ -70,6 +90,11 @@ jobs:
             "tenacity>=8.2" \
             "defusedxml>=0.7"
 
+      - name: Smoke-test vendored runtime
+        env:
+          PYTHONPATH: build/server/vendor:build/server/src
+        run: python -c "from pydantic_core import _pydantic_core; import kegg_mcp_server.server"
+
       - name: Install mcpb CLI
         run: npm install -g @anthropic-ai/mcpb
 
@@ -79,9 +104,9 @@ jobs:
       - name: Pack .mcpb
         run: |
           cd build
-          mcpb pack . ../kegg-mcp-server-${GITHUB_REF_NAME#v}.mcpb
+          mcpb pack . ../kegg-mcp-server-${{ steps.version.outputs.version }}-linux-x86_64-py312.mcpb
 
       - name: Attach .mcpb to GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          files: kegg-mcp-server-*.mcpb
+          files: kegg-mcp-server-*-linux-x86_64-py312.mcpb

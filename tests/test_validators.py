@@ -7,13 +7,14 @@ import pytest
 from kegg_mcp_server.validators import (
     validate_brite_id,
     validate_compound_id,
-    validate_database,
     validate_disease_id,
     validate_drug_id,
     validate_enzyme_id,
     validate_gene_id,
     validate_glycan_id,
+    validate_info_database,
     validate_ko_id,
+    validate_link_database,
     validate_module_id,
     validate_organism_code,
     validate_pathway_id,
@@ -273,25 +274,57 @@ def test_validate_organism_code_invalid(value: str) -> None:
         validate_organism_code(value)
 
 
-# --- validate_database ---
+# --- operation-specific database validators ---
 
 
 @pytest.mark.parametrize(
     "value",
-    ["pathway", "compound", "kegg"],
+    ["pathway", "vp", "vtax", "vgenome", "rmodule", "ntmap", "dgroup", "hsa", "T01001"],
 )
-def test_validate_database_valid(value: str) -> None:
-    result = validate_database(value)
+def test_validate_info_database_valid(value: str) -> None:
+    result = validate_info_database(value)
     assert result == value
 
 
 @pytest.mark.parametrize(
     "value",
-    ["nonexist", ""],
+    ["nonexist", "organism", "taxonomy", ""],
 )
-def test_validate_database_invalid(value: str) -> None:
+def test_validate_info_database_invalid(value: str) -> None:
     with pytest.raises(ValueError):
-        validate_database(value)
+        validate_info_database(value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "pathway",
+        "genes",
+        "vp",
+        "vtax",
+        "vgenome",
+        "rmodule",
+        "ntmap",
+        "dgroup",
+        "taxonomy",
+        "atc",
+        "hsa",
+        "T01001",
+    ],
+)
+def test_validate_link_database_valid(value: str) -> None:
+    assert validate_link_database(value) == value
+
+
+@pytest.mark.parametrize("value", ["nonexist", "organism", "kegg", ""])
+def test_validate_link_database_invalid(value: str) -> None:
+    with pytest.raises(ValueError):
+        validate_link_database(value)
+
+
+def test_database_validators_normalize_case() -> None:
+    assert validate_info_database(" HSA ") == "hsa"
+    assert validate_link_database("t01001") == "T01001"
 
 
 # --- validate_query ---

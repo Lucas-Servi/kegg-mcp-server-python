@@ -62,6 +62,18 @@ Issues = "https://github.com/Lucas-Servi/kegg-mcp-server-python/issues"
 [tool.hatch.build.targets.wheel]
 packages = ["src/kegg_mcp_server"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/pyproject.toml",
+    "/README.md",
+    "/LICENSE",
+    "/CONTRIBUTING.md",
+    "/requirements.txt",
+    "/uv.lock",
+]
+
 [tool.hatch.version]
 path = "src/kegg_mcp_server/__init__.py"
 

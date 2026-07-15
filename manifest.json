@@ -3,9 +3,9 @@
   "manifest_version": "0.4",
   "name": "kegg-mcp-server",
   "display_name": "KEGG MCP Server",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Query the KEGG bioinformatics database (pathways, genes, compounds, drugs, and more) from Claude via the public KEGG REST API.",
-  "long_description": "Read-only MCP server for the KEGG REST API. Exposes 34 tools across 13 categories (pathways, genes, compounds, reactions, enzymes, diseases, drugs, modules, orthology, glycans, BRITE hierarchies, cross-database lookup, ASCII visualization) plus 9 URI resource templates and 4 guided bioinformatics prompts. Every tool is marked readOnly+idempotent. Responses are structured Pydantic JSON with a summary/full detail switch to keep context usage small. The KEGG REST API is free and unauthenticated — no keys required.",
+  "long_description": "Read-only MCP server for the KEGG REST API. Exposes 34 tools across 13 categories (pathways, genes, compounds, reactions, enzymes, diseases, drugs, modules, orthology, glycans, BRITE hierarchies, cross-database lookup, ASCII visualization) plus 9 URI resource templates and 4 guided bioinformatics prompts. Every tool is marked readOnly+idempotent. Responses are structured Pydantic JSON with a summary/full detail switch to keep context usage small. No API key is required. KEGG states that its REST API is for academic use by academic users; other users must follow KEGG's non-academic-use guidance at https://www.kegg.jp/kegg/rest/.",
   "author": {
     "name": "Lucas Servi",
     "url": "https://github.com/Lucas-Servi"
@@ -229,12 +229,10 @@
   "compatibility": {
     "claude_desktop": ">=0.10.0",
     "platforms": [
-      "darwin",
-      "win32",
       "linux"
     ],
     "runtimes": {
-      "python": ">=3.11"
+      "python": ">=3.12,<3.13"
     }
   }
 }

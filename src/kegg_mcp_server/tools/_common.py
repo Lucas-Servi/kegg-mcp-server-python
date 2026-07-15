@@ -25,6 +25,20 @@ READ_ONLY = ToolAnnotations(
 MAX_ENTRIES_CAP = 100
 
 
+def not_found_result(
+    entity_type: str, identifier: str, *, path_identifier: str | None = None
+) -> ErrorResult:
+    """Build the stable result returned when a point lookup has no KEGG entry."""
+    return ErrorResult(
+        error=f"KEGG {entity_type} not found: {identifier}",
+        code="not_found",
+        retryable=False,
+        status=404,
+        path=f"/get/{path_identifier or identifier}",
+        hint="Check that the identifier exists in KEGG and belongs to the expected database.",
+    )
+
+
 def build_search_result(
     query: str,
     database: str,
@@ -52,9 +66,9 @@ def kegg_tool(fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R | ErrorR
     """Convert KEGGAPIError into an ErrorResult return value.
 
     KEGG 404 responses are handled at the HTTP layer by returning an empty
-    string, so tools produce their normal empty result (e.g. a SearchResult
-    with total_found=0). This decorator only catches genuine API failures
-    (5xx, timeouts, network errors).
+    string. Point-lookup tools convert that value to a typed not-found result,
+    while searches produce their normal empty result. This decorator catches
+    genuine API failures (5xx, timeouts, network errors) and invalid inputs.
     """
 
     @wraps(fn)
