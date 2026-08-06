@@ -101,7 +101,7 @@ The release bundle is built specifically for Linux x86-64 and CPython 3.12 becau
 | **Modules** | `search_modules`, `get_module_info` | Functional module definitions |
 | **Orthology** | `search_ko_entries`, `get_ko_info` | KEGG Orthology entries |
 | **Glycans** | `search_glycans`, `get_glycan_info` | Glycan composition, reactions |
-| **BRITE** | `search_brite`, `get_brite_info` | Functional hierarchies (level counts by default; `detail_level="full"` for the capped tree) |
+| **BRITE** | `search_brite`, `get_brite_info` | Functional hierarchies (level counts by default; `detail_level="full"` for the capped tree). Takes any id form KEGG emits — `br:ko00001`, `ko00001`, or the bare `00001` from `search_brite` |
 | **Cross-database** | `batch_entry_lookup`, `convert_identifiers`, `find_related_entries` | Bulk fetch (up to 50), ID mapping within one kind — genes ↔ UniProt/NCBI, chemistry ↔ ChEBI/PubChem |
 | **Visualization** | `render_pathway_ascii` | ASCII art rendering of pathway topology (chain or grid mode) |
 

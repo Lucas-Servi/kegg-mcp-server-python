@@ -86,6 +86,15 @@ this surfaced as a `ValidationError` on **every valid BRITE id**. Use `parse_bri
 - **Cap the output.** `/get/br:ko00001` is **4.3 MB** / 65,338 lines. Before the parser was fixed
   the error accidentally protected the caller's context window; fixing it without a cap turns a
   confusing error into a context bomb.
+- **`/get` requires the `br:` prefix, and NO other endpoint emits it.** `/get/br:br08303` is 200
+  while `/get/br08303` and `/get/08303` are both **404** — but `/list/brite` emits `br08901` and
+  `/find/brite/<query>` strips the family prefix entirely (`08303` for `br08303`, `00001` for
+  `ko00001`). So every id `search_brite` handed the model came back `not_found` on a real entry:
+  a broken search→get handoff that the URL being "fine" hides. `brite_get_candidates` normalizes
+  all four shapes. A **bare** digit id is unambiguous but not locally decidable (which family?), so
+  both are tried in order — `/list/brite` is 97 `br#####` + 59 `ko#####` and those 156 ids have
+  156 distinct digit suffixes, and a 404 costs one cached empty response. `BRITE_ID` therefore
+  makes the family segment optional; keep `validate_brite_id` rejecting non-BRITE junk.
 
 **`pydantic.ValidationError` subclasses `ValueError`.** The shared tool decorator catches
 `ValueError` and maps it to `code="validation_error"` with a hint blaming the caller's identifier —

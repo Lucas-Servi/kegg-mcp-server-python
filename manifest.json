@@ -161,7 +161,7 @@
     },
     {
       "name": "get_brite_info",
-      "description": "Detailed info for a BRITE entry. Returns a hierarchy summary (level counts + top-level labels) by default; `detail_level=\"full\"` returns the capped hierarchy."
+      "description": "Detailed info for a BRITE entry. Returns a hierarchy summary (level counts + top-level labels) by default; `detail_level=\"full\"` returns the capped hierarchy. Accepts any id form KEGG emits: `br:ko00001`, `ko00001`, or the bare `00001` returned by search_brite."
     },
     {
       "name": "batch_entry_lookup",

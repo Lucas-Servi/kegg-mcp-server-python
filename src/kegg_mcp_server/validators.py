@@ -15,7 +15,11 @@ DISEASE_ID = re.compile(r"^(ds:)?H\d{5}$")
 DRUG_ID = re.compile(r"^(dr:)?D\d{5}$")
 MODULE_ID = re.compile(r"^(md:)?M\d{5}$")
 GLYCAN_ID = re.compile(r"^(gl:)?G\d{5}$")
-BRITE_ID = re.compile(r"^(br:)?(br|ko|[a-z]{3,4})\d{5}$")
+#: Accepts every id shape KEGG itself hands out: the canonical `br:br08303` /
+#: `br:ko00001`, the unprefixed `br08303` / `ko00001` emitted by `/list/brite`,
+#: and the bare `08303` / `00001` emitted by `/find/brite/<query>`.
+#: `normalize_brite_id` is what turns any of them into a URL that works.
+BRITE_ID = re.compile(r"^(br:)?((br|ko|[a-z]{3,4})?)\d{5}$")
 KEGG_DATABASE_IDENTIFIER = re.compile(r"^(?:[a-z]{3,4}|T\d{5})$")
 
 INFO_DATABASES = frozenset(
@@ -158,6 +162,36 @@ def validate_glycan_id(glycan_id: str) -> str:
 
 def validate_brite_id(brite_id: str) -> str:
     return validate_identifier(brite_id, BRITE_ID, "BRITE ID")
+
+
+#: The two BRITE hierarchy families. `/list/brite` is 97 `br#####` + 59 `ko#####`,
+#: and the 156 ids have 156 distinct digit suffixes — so a bare `08303` resolves
+#: to exactly one family, we just cannot tell WHICH one without asking KEGG.
+_BRITE_FAMILIES = ("br", "ko")
+
+
+def brite_get_candidates(brite_id: str) -> list[str]:
+    """Return the `/get` ids to try for a validated BRITE id, best first.
+
+    **`/get` requires the `br:` prefix on every BRITE id** — `/get/br08303` and
+    `/get/ko00001` are both 404, only `/get/br:br08303` and `/get/br:ko00001` are
+    200 (probed live). That matters because neither of the two ids KEGG *hands the
+    caller* carries it: `/list/brite` emits `br08901` and `/find/brite/<query>`
+    strips the family prefix entirely, emitting `08303` for `br08303` and `00001`
+    for `ko00001`. So the ids produced by `search_brite` used to 404 as
+    "not_found" — a real entry reported as nonexistent.
+
+    A bare digit id is unambiguous but not locally decidable, so both families are
+    returned in order. A 404 costs one cached empty response, so trying the second
+    is cheap.
+    """
+    value = brite_id.strip()
+    if value.startswith("br:"):
+        return [value]
+    for family in _BRITE_FAMILIES:
+        if value.startswith(family):
+            return [f"br:{value}"]
+    return [f"br:{family}{value}" for family in _BRITE_FAMILIES]
 
 
 def validate_organism_code(code: str) -> str:

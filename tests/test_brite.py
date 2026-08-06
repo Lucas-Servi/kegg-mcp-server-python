@@ -35,6 +35,7 @@ from kegg_mcp_server.parsers import (
     parse_brite_hierarchy,
 )
 from kegg_mcp_server.tools.brite import _RAW_CONTENT_MAX_CHARS
+from kegg_mcp_server.validators import brite_get_candidates
 
 from .test_tools_registration import FakeKEGG, FakeMCP, _make_ctx
 
@@ -66,6 +67,31 @@ def _call(fake_mcp: FakeMCP, raw: str, **kwargs):
             **kwargs,
         )
     )
+
+
+class RecordingKEGG(FakeKEGG):
+    """Serves `get_response` only for `serves`, and records every id requested.
+
+    The plain `FakeKEGG.get` ignores its argument, so it cannot distinguish a
+    working URL from a 404 — exactly the bug under test here.
+    """
+
+    def __init__(self, *, serves: str, get_response: str) -> None:
+        super().__init__(get_response=get_response)
+        self._serves = serves
+        self.requested: list[str] = []
+
+    async def get(self, dbentries: str, option: str | None = None) -> str:
+        self.requested.append(dbentries)
+        return self._get if dbentries == self._serves else ""
+
+
+def _call_recording(fake_mcp: FakeMCP, brite_id: str, *, serves: str, raw: str):
+    fake = RecordingKEGG(serves=serves, get_response=raw)
+    result = asyncio.run(
+        fake_mcp.tools["get_brite_info"](brite_id, ctx=_make_ctx(fake))
+    )
+    return result, fake.requested
 
 
 # ── Parser ──────────────────────────────────────────────────────────────────
@@ -213,3 +239,96 @@ class TestGetBriteInfo:
     def test_result_is_json_serializable(self, fake_mcp: FakeMCP):
         result = _call(fake_mcp, _atc_text())
         assert json.loads(result.model_dump_json())["level_counts"]["F"] == 2
+
+
+# ── `/get` needs `br:`, and no other tool emits it ──────────────────────────
+
+class TestBriteGetCandidates:
+    """`/get` 404s without the `br:` prefix, and nothing hands the caller one.
+
+    Probed live: `/get/br:br08303` → 200, `/get/br08303` → 404, `/get/08303` →
+    404. But `/list/brite` emits `br08901` and `/find/brite/ATC` emits `08303`,
+    so every id `search_brite` gives the model used to come back "not_found".
+    """
+
+    @pytest.mark.parametrize(
+        "given,expected",
+        [
+            ("br:ko00001", ["br:ko00001"]),          # already canonical
+            ("br:br08303", ["br:br08303"]),
+            ("ko00001", ["br:ko00001"]),             # as /list/brite emits it
+            ("br08303", ["br:br08303"]),
+            ("08303", ["br:br08303", "br:ko08303"]),  # as /find/brite emits it
+            ("00001", ["br:br00001", "br:ko00001"]),
+        ],
+    )
+    def test_candidate_urls(self, given: str, expected: list[str]):
+        assert brite_get_candidates(given) == expected
+
+    def test_every_candidate_carries_the_br_prefix(self):
+        for given in ("br:ko00001", "ko00001", "br08303", "08303"):
+            assert all(c.startswith("br:") for c in brite_get_candidates(given))
+
+    def test_unprefixed_list_style_id_resolves(self, fake_mcp: FakeMCP):
+        """`ko00001` from /list/brite must not 404."""
+        result, requested = _call_recording(
+            fake_mcp, "ko00001", serves="br:ko00001", raw=_hierarchy_text()
+        )
+        assert isinstance(result, BriteHierarchy), result
+        assert result.entry == "br:ko00001"
+        assert requested == ["br:ko00001"]
+
+    def test_bare_search_style_id_resolves_via_fallback(self, fake_mcp: FakeMCP):
+        """`08303` from search_brite: `br` is tried first and wins."""
+        result, requested = _call_recording(
+            fake_mcp, "08303", serves="br:br08303", raw=_atc_text()
+        )
+        assert isinstance(result, BriteHierarchy), result
+        assert result.entry == "br:br08303"
+        assert requested == ["br:br08303"]
+
+    def test_bare_id_falls_through_to_the_ko_family(self, fake_mcp: FakeMCP):
+        """`00001` is `ko00001`, so the `br` candidate must 404 first."""
+        result, requested = _call_recording(
+            fake_mcp, "00001", serves="br:ko00001", raw=_hierarchy_text()
+        )
+        assert isinstance(result, BriteHierarchy), result
+        assert result.entry == "br:ko00001"
+        assert requested == ["br:br00001", "br:ko00001"]
+
+    def test_a_genuinely_absent_id_is_still_not_found(self, fake_mcp: FakeMCP):
+        """Both families exhausted → not_found, not a silent empty hierarchy."""
+        result, requested = _call_recording(
+            fake_mcp, "99999", serves="nothing", raw=_hierarchy_text()
+        )
+        assert isinstance(result, ErrorResult)
+        assert result.code == "not_found"
+        assert requested == ["br:br99999", "br:ko99999"]
+
+    def test_a_canonical_id_costs_exactly_one_request(self, fake_mcp: FakeMCP):
+        """No speculative second call when the family is already known."""
+        _, requested = _call_recording(
+            fake_mcp, "br:ko00001", serves="br:ko00001", raw=_hierarchy_text()
+        )
+        assert len(requested) == 1
+
+    def test_search_brite_output_feeds_get_brite_info(self, fake_mcp: FakeMCP):
+        """The end-to-end handoff that was broken: search → get."""
+        search = asyncio.run(
+            fake_mcp.tools["search_brite"](
+                "ATC",
+                ctx=_make_ctx(
+                    FakeKEGG(
+                        find_response=(
+                            "08303\tAnatomical Therapeutic Chemical (ATC) classification\n"
+                        )
+                    )
+                ),
+            )
+        )
+        (found_id,) = search.results
+        assert found_id == "08303"  # no prefix — this is what KEGG returns
+        result, _ = _call_recording(
+            fake_mcp, found_id, serves="br:br08303", raw=_atc_text()
+        )
+        assert isinstance(result, BriteHierarchy), result

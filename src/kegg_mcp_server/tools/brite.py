@@ -14,7 +14,11 @@ from kegg_mcp_server.tools._common import (
     kegg_tool,
     not_found_result,
 )
-from kegg_mcp_server.validators import validate_brite_id, validate_query
+from kegg_mcp_server.validators import (
+    brite_get_candidates,
+    validate_brite_id,
+    validate_query,
+)
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -62,20 +66,34 @@ def register(mcp: FastMCP) -> None:
         names, and the labels of the top two levels.
 
         Args:
-            brite_id: KEGG BRITE hierarchy ID (e.g. 'br:ko00001' for the KO
-                hierarchy, 'br:br08303' for the ATC drug classification).
+            brite_id: KEGG BRITE hierarchy ID. Any form KEGG hands out works —
+                'br:ko00001' (canonical), 'ko00001' / 'br08303' (as listed by
+                list_databases), or the bare '00001' / '08303' returned by
+                search_brite.
             detail_level: 'summary' (default) or 'full' (adds raw_content, the
                 raw hierarchy text — TRUNCATED, since the largest hierarchies are
                 several megabytes).
         """
         brite_id = validate_brite_id(brite_id)
         kegg = ctx.request_context.lifespan_context.kegg
-        raw = await kegg.get(brite_id)
+
+        # `/get` needs the `br:` prefix, which neither `/list/brite` nor
+        # `/find/brite` puts on the ids they hand the caller. A bare digit id is
+        # unambiguous but not locally decidable, so try each family in turn.
+        candidates = brite_get_candidates(brite_id)
+        raw, resolved = "", candidates[0]
+        for candidate in candidates:
+            raw = await kegg.get(candidate)
+            if raw.strip():
+                resolved = candidate
+                break
         if not raw.strip():
-            return not_found_result("BRITE entry", brite_id)
+            return not_found_result(
+                "BRITE entry", brite_id, path_identifier=candidates[0]
+            )
 
         parsed = parse_brite_hierarchy(raw)
-        hierarchy = BriteHierarchy(entry=brite_id, detail_level=detail_level, **parsed)
+        hierarchy = BriteHierarchy(entry=resolved, detail_level=detail_level, **parsed)
         if detail_level != "full":
             return hierarchy
 
