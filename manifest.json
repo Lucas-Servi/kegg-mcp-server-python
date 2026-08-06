@@ -49,7 +49,7 @@
     },
     {
       "name": "list_organisms",
-      "description": "List KEGG organisms with their codes and names; filter with `query`."
+      "description": "List KEGG organisms with their codes and names; filter with `query`. Backed by /list/genome (/list/organism is retired)."
     },
     {
       "name": "search_pathways",
@@ -161,7 +161,7 @@
     },
     {
       "name": "get_brite_info",
-      "description": "Detailed info for a BRITE entry."
+      "description": "Detailed info for a BRITE entry. Returns a hierarchy summary (level counts + top-level labels) by default; `detail_level=\"full\"` returns the capped hierarchy."
     },
     {
       "name": "batch_entry_lookup",
@@ -169,7 +169,7 @@
     },
     {
       "name": "convert_identifiers",
-      "description": "Convert IDs between KEGG and external databases."
+      "description": "Convert IDs between KEGG and external databases, within one kind: genes (organism code or T-number) <-> ncbi-geneid/ncbi-proteinid/uniprot, or chemistry (compound/drug/glycan) <-> pubchem/chebi."
     },
     {
       "name": "find_related_entries",
