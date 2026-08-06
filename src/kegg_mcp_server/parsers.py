@@ -236,6 +236,116 @@ def summarize_flat_entry(parsed: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+# ------------------------------------------------------------------
+# BRITE hierarchy parser
+# ------------------------------------------------------------------
+
+# A depth declaration: "+D\tKO", "+F\tDrug", "+D\tGENES\tKO". The letter is the
+# DEEPEST level present; the tab-separated names label the leaf columns.
+_BRITE_HEADER_RE = re.compile(r"^\+([A-Z])\t(.*)$")
+
+# A body line: the leading letter IS the depth (A=1, B=2, …). The indentation
+# that follows is cosmetic and MUST NOT be used to derive depth — br:br08303
+# emits "AA ALIMENTARY TRACT AND METABOLISM" with no space after the level
+# letter, so an indent-width parser reads its top level as depth 0 with the
+# label "A ALIMENTARY…". Anchoring on the letter is the only correct rule.
+_BRITE_LINE_RE = re.compile(r"^([A-Z])(.*)$")
+
+#: Levels deeper than this are counted but not retained as labels. Level A/B are
+#: the navigational skeleton; C and below are the bulk (64,695 of br:ko00001's
+#: 65,337 lines are level D).
+BRITE_LABEL_MAX_DEPTH = 2
+
+#: Hard cap on retained labels per level, so a wide hierarchy can't blow up the
+#: response either (br:br08303 has 14 level-A and 93 level-B nodes).
+BRITE_LABELS_PER_LEVEL = 60
+
+
+def parse_brite_hierarchy(text: str) -> dict[str, Any]:
+    """Parse a KEGG BRITE ``/get/br:*`` response into a bounded summary.
+
+    BRITE does **not** return flat-file ``ENTRY``/``NAME`` sections — it returns
+    an indented ``A``/``B``/``C``/… tree, so ``parse_flat_entry`` yields garbage
+    keys (``'a09100 metab'``, ``'b  09101 car'``, …) and no ``entry`` at all.
+    That is why ``get_brite_info`` failed on every valid id.
+
+    Shape (verified live against ``ko00001``, ``hsa00001``, ``ko01000``,
+    ``br08001``, ``br08301``, ``br08303``, ``br08902``)::
+
+        +D\tKO              depth declaration — deepest level + leaf column names
+        !                   separator (also appears before the trailers)
+        A09100 Metabolism   body: leading letter = depth
+        B  09101 Carbohydrate metabolism
+        #[ KO | BRITE | … ]  trailers
+        #Last updated: …
+
+    Returns a dict with ``deepest_level``, ``columns``, ``level_counts``
+    (per-letter line counts), ``total_lines``, ``labels`` (top levels only, see
+    ``BRITE_LABEL_MAX_DEPTH``), and ``last_updated``. Deliberately lossy: the
+    raw text is up to 4.3 MB (``br:ko00001``) / 6.8 MB (``br:hsa00001``), which
+    is a context bomb for the LLM this feeds.
+    """
+    deepest_level: str | None = None
+    columns: list[str] = []
+    level_counts: dict[str, int] = {}
+    labels: dict[str, list[str]] = {}
+    truncated_levels: set[str] = set()
+    last_updated: str | None = None
+    total_lines = 0
+
+    for raw_line in text.splitlines():
+        line = raw_line.rstrip()
+        if not line:
+            continue
+
+        if line.startswith("+"):
+            header = _BRITE_HEADER_RE.match(line)
+            if header:
+                deepest_level = header.group(1)
+                columns = [c.strip() for c in header.group(2).split("\t") if c.strip()]
+            continue
+
+        if line.startswith("!"):
+            continue
+
+        if line.startswith("#"):
+            # "#Last updated: August 6, 2026" — the only trailer worth keeping.
+            lowered = line.lstrip("#").strip()
+            if lowered.lower().startswith("last updated"):
+                last_updated = lowered.split(":", 1)[-1].strip()
+            continue
+
+        body = _BRITE_LINE_RE.match(line)
+        if not body:
+            continue
+
+        level, rest = body.group(1), body.group(2).strip()
+        level_counts[level] = level_counts.get(level, 0) + 1
+        total_lines += 1
+
+        if _brite_depth(level) <= BRITE_LABEL_MAX_DEPTH and rest:
+            bucket = labels.setdefault(level, [])
+            if len(bucket) < BRITE_LABELS_PER_LEVEL:
+                bucket.append(sanitize_llm_text(rest))
+            else:
+                truncated_levels.add(level)
+
+    return {
+        "deepest_level": deepest_level,
+        "columns": columns,
+        "level_counts": dict(sorted(level_counts.items())),
+        "total_lines": total_lines,
+        "labels": {lvl: labels[lvl] for lvl in sorted(labels)},
+        "labels_truncated": sorted(truncated_levels),
+        "last_updated": last_updated,
+    }
+
+
+def _brite_depth(level: str) -> int:
+    """1-based depth of a BRITE level letter (``A`` → 1, ``B`` → 2, …)."""
+    return ord(level) - ord("A") + 1
+
+
 def parse_multi_flat(text: str) -> list[dict[str, Any]]:
     """Parse a KEGG response containing multiple flat-file entries (separated by ///)."""
     entries: list[dict[str, Any]] = []

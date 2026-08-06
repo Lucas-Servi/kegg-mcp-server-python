@@ -90,7 +90,7 @@ The release bundle is built specifically for Linux x86-64 and CPython 3.12 becau
 
 | Category | Tools | Examples |
 |----------|-------|---------|
-| **Database** | `get_database_info`, `list_organisms` | Get KEGG release stats, list all ~26k organisms |
+| **Database** | `get_database_info`, `list_organisms` | Get KEGG release stats, search the ~12k organisms by code or name |
 | **Pathways** | `search_pathways`, `get_pathway_info`, `get_pathway_genes`, `get_pathway_compounds`, `get_pathway_reactions` | Search by keyword, get full pathway details |
 | **Genes** | `search_genes`, `get_gene_info`, `get_gene_orthologs` | Find genes in any organism, cross-species orthologs |
 | **Compounds** | `search_compounds`, `get_compound_info`, `get_compound_reactions` | Search by name/formula/mass, find reactions |

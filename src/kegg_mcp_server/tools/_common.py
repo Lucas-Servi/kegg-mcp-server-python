@@ -7,6 +7,7 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from mcp.types import ToolAnnotations
+from pydantic import ValidationError
 
 from kegg_mcp_server.errors import KEGGAPIError
 from kegg_mcp_server.models.common import SearchResult
@@ -69,6 +70,15 @@ def kegg_tool(fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R | ErrorR
     string. Point-lookup tools convert that value to a typed not-found result,
     while searches produce their normal empty result. This decorator catches
     genuine API failures (5xx, timeouts, network errors) and invalid inputs.
+
+    ``ValidationError`` is caught FIRST, and the order is load-bearing: Pydantic
+    v2's ``ValidationError`` subclasses ``ValueError``, so a response model that
+    fails to build — a parser producing the wrong keys, i.e. a bug in *this*
+    server — used to be reported as ``validation_error`` with the hint "Check the
+    identifier format and try again", blaming the caller's input for a defect it
+    had nothing to do with. ``get_brite_info`` failed exactly this way on every
+    valid BRITE id. ``ValueError`` keeps meaning "bad input" (that is the
+    contract the ``validators`` module raises against).
     """
 
     @wraps(fn)
@@ -87,6 +97,19 @@ def kegg_tool(fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R | ErrorR
                     if exc.retryable
                     else "KEGG REST API rejected the request; check the identifier "
                     "or database name."
+                ),
+            )
+        except ValidationError as exc:
+            # Must precede the ValueError branch — see the docstring.
+            return ErrorResult(
+                error=f"Failed to build the response for {fn.__name__}: {exc.error_count()} "
+                f"field error(s) — {exc.errors()[0].get('msg', 'invalid')}",
+                code="parse_error",
+                retryable=False,
+                hint=(
+                    "The identifier was accepted but this server could not parse "
+                    "KEGG's response into the expected shape. This is a bug in the "
+                    f"{fn.__name__} tool, not in the request."
                 ),
             )
         except ValueError as exc:

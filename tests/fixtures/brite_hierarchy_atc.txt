@@ -1,0 +1,19 @@
++F	Drug
+!
+AA ALIMENTARY TRACT AND METABOLISM
+B  A01 STOMATOLOGICAL PREPARATIONS
+C    A01A STOMATOLOGICAL PREPARATIONS
+D      A01AA Caries prophylactic agents
+E        A01AA01 Sodium fluoride
+F          D00943  Sodium fluoride (JAN/USP) &lt;JP&gt;
+E        A01AA02 Sodium monofluorophosphate
+F          D05864  Sodium monofluorophosphate (USP)
+AB BLOOD AND BLOOD FORMING ORGANS
+B  B01 ANTITHROMBOTIC AGENTS
+C    B01A ANTITHROMBOTIC AGENTS
+D      B01AA Vitamin K antagonists
+!
+#
+#[ DRUG | BRITE | KEGG2 | KEGG ]
+#Last updated: May 26, 2026
+#According to WHO's ATC 2026

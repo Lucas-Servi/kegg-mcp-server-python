@@ -49,6 +49,8 @@ class ListResult(BaseModel):
     database: str
     total: int
     items: dict[str, str]
+    #: Set when `items` is a bounded subset of `total` (see MAX_ENTRIES_CAP).
+    truncated: bool = False
 
 
 class ConversionResult(BaseModel):

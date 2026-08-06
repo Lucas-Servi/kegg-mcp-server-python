@@ -276,6 +276,106 @@ def test_convert_identifiers_returns_conversion_result(fake_mcp: FakeMCP) -> Non
     assert result.count == 1
 
 
+class _RecordingConvKEGG(FakeKEGG):
+    """Records the (target_db, source) pair each conv call would put in the URL."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.conv_calls: list[tuple[str, str]] = []
+
+    async def conv(self, target_db: str, source: str) -> str:  # noqa: ANN101
+        self.conv_calls.append((target_db, source))
+        return self._conv
+
+
+def test_convert_identifiers_prefixes_entry_ids_with_source_db(fake_mcp: FakeMCP) -> None:
+    """The D4 regression: source_db was discarded whenever entry_ids was given.
+
+    `/conv/uniprot/1956` is a 400 — KEGG needs every id namespaced by its own
+    database — so the entry_ids path failed on every call while looking valid.
+    """
+    fake = _RecordingConvKEGG(conv_response="hsa:1956\tup:P00533\n")
+    result = asyncio.run(
+        fake_mcp.tools["convert_identifiers"](
+            source_db="hsa", target_db="uniprot", entry_ids=["1956"], ctx=_make_ctx(fake)
+        )
+    )
+    assert fake.conv_calls == [("uniprot", "hsa:1956")]
+    assert result.count == 1
+
+
+def test_convert_identifiers_does_not_double_prefix(fake_mcp: FakeMCP) -> None:
+    fake = _RecordingConvKEGG(conv_response="hsa:1956\tup:P00533\n")
+    asyncio.run(
+        fake_mcp.tools["convert_identifiers"](
+            source_db="hsa", target_db="uniprot", entry_ids=["hsa:1956"], ctx=_make_ctx(fake)
+        )
+    )
+    assert fake.conv_calls == [("uniprot", "hsa:1956")]
+
+
+def test_convert_identifiers_joins_multiple_ids_and_caps_at_ten(fake_mcp: FakeMCP) -> None:
+    """KEGG's GET limit is 10 entries; each still carries its own prefix."""
+    fake = _RecordingConvKEGG(conv_response="")
+    asyncio.run(
+        fake_mcp.tools["convert_identifiers"](
+            source_db="compound",
+            target_db="chebi",
+            entry_ids=[f"C{i:05d}" for i in range(12)],
+            ctx=_make_ctx(fake),
+        )
+    )
+    (_, source), = fake.conv_calls
+    ids = source.split("+")
+    assert len(ids) == 10
+    assert ids[0] == "compound:C00000"
+
+
+def test_convert_identifiers_rejects_kegg_target_without_calling_kegg(
+    fake_mcp: FakeMCP,
+) -> None:
+    """The docstring used to steer callers at target_db='kegg'; /conv/kegg/… is 400.
+
+    The rejection must happen before the HTTP call — otherwise every bad pair
+    still costs a round-trip to KEGG and a rate-limit slot.
+    """
+    fake = _RecordingConvKEGG(conv_response="")
+    result = asyncio.run(
+        fake_mcp.tools["convert_identifiers"](
+            source_db="compound", target_db="kegg", entry_ids=["C00002"], ctx=_make_ctx(fake)
+        )
+    )
+    assert isinstance(result, ErrorResult)
+    assert result.code == "validation_error"
+    assert fake.conv_calls == []
+
+
+def test_convert_identifiers_rejects_cross_kind_pair(fake_mcp: FakeMCP) -> None:
+    """`compound` and `uniprot` are both real conv databases; the pair is 400."""
+    fake = _RecordingConvKEGG(conv_response="")
+    result = asyncio.run(
+        fake_mcp.tools["convert_identifiers"](
+            source_db="compound", target_db="uniprot", ctx=_make_ctx(fake)
+        )
+    )
+    assert isinstance(result, ErrorResult)
+    assert result.code == "validation_error"
+    assert fake.conv_calls == []
+
+
+def test_convert_identifiers_normalizes_the_pair(fake_mcp: FakeMCP) -> None:
+    """A lowercase T-number reaches KEGG uppercased, as /conv requires."""
+    fake = _RecordingConvKEGG(conv_response="hsa:1956\tup:P00533\n")
+    result = asyncio.run(
+        fake_mcp.tools["convert_identifiers"](
+            source_db="t01001", target_db="UniProt", entry_ids=["1956"], ctx=_make_ctx(fake)
+        )
+    )
+    assert fake.conv_calls == [("uniprot", "T01001:1956")]
+    assert result.source_db == "T01001"
+    assert result.target_db == "uniprot"
+
+
 def test_find_related_entries_returns_link_result(fake_mcp: FakeMCP) -> None:
     from kegg_mcp_server.models.common import LinkResult
 
@@ -303,6 +403,8 @@ def test_drug_interactions_parses_ddi(fake_mcp: FakeMCP) -> None:
 
 
 def test_list_organisms_parses_three_column_rows(fake_mcp: FakeMCP) -> None:
+    """Tolerated fallback shape. NOTE: the live endpoint returns 2 columns —
+    see test_list_organisms_parses_genome_two_column_rows for the real shape."""
     from kegg_mcp_server.models.common import ListResult
 
     fake = FakeKEGG(list_response="T01001\thsa\tHomo sapiens\nT01002\tmmu\tMus musculus\n")
@@ -310,6 +412,85 @@ def test_list_organisms_parses_three_column_rows(fake_mcp: FakeMCP) -> None:
     assert isinstance(result, ListResult)
     assert result.total == 2
     assert "hsa" in result.items
+
+
+def test_list_organisms_queries_the_genome_database(fake_mcp: FakeMCP) -> None:
+    """/list/organism was retired and now 400s; /list/genome is the live path."""
+    requested: list[str] = []
+
+    class RecordingKEGG(FakeKEGG):
+        async def list(self, database: str) -> str:  # noqa: ANN101
+            requested.append(database)
+            return self._list
+
+    fake = RecordingKEGG(list_response="T01001\thsa; Homo sapiens (human)\n")
+    asyncio.run(fake_mcp.tools["list_organisms"](ctx=_make_ctx(fake)))
+    assert requested == ["genome"]
+
+
+def test_list_organisms_parses_genome_two_column_rows(fake_mcp: FakeMCP) -> None:
+    """Real /list/genome rows are "T-number\\tcode; description"."""
+    from kegg_mcp_server.models.common import ListResult
+
+    fake = FakeKEGG(
+        list_response=(
+            "T01001\thsa; Homo sapiens (human)\n"
+            "T01005\tptr; Pan troglodytes (chimpanzee)\n"
+        )
+    )
+    result = asyncio.run(fake_mcp.tools["list_organisms"](ctx=_make_ctx(fake)))
+    assert isinstance(result, ListResult)
+    assert result.total == 2
+    # Keyed by organism code, NOT the T-number, and the code is stripped
+    # out of the description.
+    assert result.items["hsa"] == "Homo sapiens (human)"
+    assert result.items["ptr"] == "Pan troglodytes (chimpanzee)"
+    assert "T01001" not in result.items
+    assert result.truncated is False
+
+
+def test_list_organisms_filters_by_query(fake_mcp: FakeMCP) -> None:
+    fake = FakeKEGG(
+        list_response=(
+            "T01001\thsa; Homo sapiens (human)\n"
+            "T00010\tbsu; Bacillus subtilis subsp. subtilis 168\n"
+        )
+    )
+    result = asyncio.run(
+        fake_mcp.tools["list_organisms"](query="bacillus", ctx=_make_ctx(fake))
+    )
+    assert set(result.items) == {"bsu"}
+    assert result.total == 1
+
+    by_code = asyncio.run(
+        fake_mcp.tools["list_organisms"](query="hsa", ctx=_make_ctx(fake))
+    )
+    assert set(by_code.items) == {"hsa"}
+
+
+def test_list_organisms_bounds_output_and_flags_truncation(fake_mcp: FakeMCP) -> None:
+    """~12k organisms must never all land in one tool response."""
+    from kegg_mcp_server.tools._common import MAX_ENTRIES_CAP
+
+    rows = "".join(f"T{i:05d}\torg{i}; Organism {i}\n" for i in range(250))
+    fake = FakeKEGG(list_response=rows)
+
+    result = asyncio.run(fake_mcp.tools["list_organisms"](ctx=_make_ctx(fake)))
+    assert result.total == 250
+    assert len(result.items) == MAX_ENTRIES_CAP
+    assert result.truncated is True
+
+    # A pathological max_results is clamped, not honoured.
+    huge = asyncio.run(
+        fake_mcp.tools["list_organisms"](max_results=100_000, ctx=_make_ctx(fake))
+    )
+    assert len(huge.items) == MAX_ENTRIES_CAP
+
+    small = asyncio.run(
+        fake_mcp.tools["list_organisms"](max_results=5, ctx=_make_ctx(fake))
+    )
+    assert len(small.items) == 5
+    assert small.truncated is True
 
 
 def test_database_info_parses_release_and_entries(fake_mcp: FakeMCP) -> None:

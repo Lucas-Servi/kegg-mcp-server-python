@@ -8,7 +8,7 @@ from kegg_mcp_server.models.common import BatchLookupResult, ConversionResult, L
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_conv_response, parse_link_response, parse_multi_flat
 from kegg_mcp_server.tools._common import READ_ONLY, kegg_tool
-from kegg_mcp_server.validators import validate_link_database
+from kegg_mcp_server.validators import validate_conv_pair, validate_link_database
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -47,14 +47,38 @@ def register(mcp: FastMCP) -> None:
     ) -> ConversionResult | ErrorResult:
         """Convert KEGG IDs to/from external database identifiers.
 
+        Converts within one kind only, KEGG side <-> outside side:
+        genes (organism code 'hsa' or T-number 'T01001') <-> ncbi-geneid /
+        ncbi-proteinid / uniprot; chemistry (compound / drug / glycan) <->
+        pubchem / chebi. Cross-kind pairs such as compound<->uniprot are
+        rejected by KEGG, and 'kegg' is not a database conv accepts.
+
         Args:
-            source_db: Source database (e.g. 'hsa', 'ncbi-geneid', 'uniprot', 'chebi', 'pubchem').
-            target_db: Target database (e.g. 'kegg', 'ncbi-geneid', 'uniprot').
-            entry_ids: Optional list of specific IDs to convert (max 10). If None,
-                converts the full source database.
+            source_db: Source database — 'hsa', 'T01001', 'ncbi-geneid',
+                'ncbi-proteinid', 'uniprot', 'compound', 'drug', 'glycan',
+                'pubchem' or 'chebi'.
+            target_db: Target database, from the same list and the opposite side
+                of the pair (e.g. source_db='hsa' + target_db='uniprot', or
+                source_db='chebi' + target_db='compound').
+            entry_ids: Optional list of specific IDs to convert. Bare ids are
+                prefixed with source_db automatically ('1956' -> 'hsa:1956').
+                KEGG accepts at most 10 per request; only the first 10 are sent.
+                If None, converts the full source database (large: hsa <->
+                ncbi-geneid is ~700 KB).
         """
+        source_db, target_db = validate_conv_pair(
+            source_db, target_db, has_entry_ids=bool(entry_ids)
+        )
         kegg = ctx.request_context.lifespan_context.kegg
-        source = "+".join(entry_ids[:10]) if entry_ids else source_db
+        if entry_ids:
+            # KEGG needs each id namespaced by its own database — a bare '1956'
+            # is a 400. Discarding source_db here (the original bug) made every
+            # entry_ids call fail while looking like a valid request.
+            source = "+".join(
+                eid if ":" in eid else f"{source_db}:{eid}" for eid in entry_ids[:10]
+            )
+        else:
+            source = source_db
         mappings = parse_conv_response(await kegg.conv(target_db, source))
         return ConversionResult(
             source_db=source_db, target_db=target_db, mappings=mappings, count=len(mappings)

@@ -49,7 +49,7 @@
     },
     {
       "name": "list_organisms",
-      "description": "List all KEGG organisms."
+      "description": "List KEGG organisms with their codes and names; filter with `query`."
     },
     {
       "name": "search_pathways",

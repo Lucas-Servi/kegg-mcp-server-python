@@ -1,0 +1,21 @@
++D	KO
+!
+A09100 Metabolism
+B  09101 Carbohydrate metabolism
+C    00010 Glycolysis / Gluconeogenesis [PATH:ko00010]
+D      K00844  HK; hexokinase [EC:2.7.1.1]
+D      K12407  GCK; glucokinase [EC:2.7.1.2]
+D      K00845  glk; glucokinase [EC:2.7.1.2]
+D      K25026  glk; glucokinase [EC:2.7.1.2]
+D      K01810  GPI, pgi; glucose-6-phosphate isomerase [EC:5.3.1.9]
+C    00020 Citrate cycle (TCA cycle) [PATH:ko00020]
+D      K06859  pgi1; glucose-6-phosphate isomerase, archaeal [EC:5.3.1.9]
+D      K13810  tal-pgi; transaldolase / glucose-6-phosphate isomerase [EC:2.2.1.2 5.3.1.9]
+A09120 Genetic Information Processing
+B  09121 Transcription
+C    03020 RNA polymerase [PATH:ko03020]
+D      K03043  rpoB; DNA-directed RNA polymerase subunit beta [EC:2.7.7.6]
+!
+#
+#[ KO | BRITE | KEGG2 | KEGG ]
+#Last updated: August 6, 2026

@@ -83,6 +83,23 @@ LINK_DATABASES = frozenset(
 
 _RESERVED_DATABASE_NAMES = INFO_DATABASES | LINK_DATABASES | {"organism", "ligand"}
 
+#: Outside databases KEGG's ``conv`` operation maps *gene/protein* entries to and from.
+CONV_GENE_OUTSIDE_DATABASES = frozenset({"ncbi-geneid", "ncbi-proteinid", "uniprot"})
+
+#: Outside databases KEGG's ``conv`` operation maps *chemical* entries to and from.
+CONV_CHEMICAL_OUTSIDE_DATABASES = frozenset({"pubchem", "chebi"})
+
+#: KEGG-side chemical databases, with the short entry prefixes KEGG also accepts
+#: (``/conv/chebi/cpd:C00002`` and ``/conv/chebi/compound:C00002`` are both 200).
+CONV_CHEMICAL_KEGG_DATABASES = frozenset({"compound", "cpd", "drug", "dr", "glycan", "gl"})
+
+_CONV_PAIRINGS_HINT = (
+    "conv maps a KEGG database to an outside one of the same kind: "
+    "genes (an organism code like 'hsa'/'eco', or a T-number) <-> "
+    "ncbi-geneid/ncbi-proteinid/uniprot; chemical entries "
+    "(compound/drug/glycan) <-> pubchem/chebi."
+)
+
 _QUERY_MAX_LEN = 200
 _QUERY_ILLEGAL = re.compile(r"[\x00-\x1f\x7f<>{}|\\^`]")
 
@@ -180,6 +197,86 @@ def validate_info_database(db: str) -> str:
 def validate_link_database(db: str) -> str:
     """Validate a target database accepted by KEGG's link operation."""
     return _validate_operation_database(db, LINK_DATABASES, "link")
+
+
+def _classify_conv_database(db: str) -> tuple[str, str]:
+    """Return ``(normalized_name, kind)`` for one side of a ``conv`` pair.
+
+    ``kind`` is ``gene_kegg`` / ``gene_outside`` / ``chem_kegg`` / ``chem_outside``.
+    Raises ``ValueError`` for names ``conv`` does not accept at all.
+
+    Order matters: ``kegg``, ``compound``, ``drug`` and ``genes`` are all 3-4
+    lowercase letters, so they match ``KEGG_DATABASE_IDENTIFIER`` and would be
+    misread as organism codes if the named sets were not checked first.
+    """
+    value = db.strip()
+    if not value:
+        raise ValueError("Database name must not be empty")
+    normalized = value.lower()
+    if normalized in CONV_GENE_OUTSIDE_DATABASES:
+        return normalized, "gene_outside"
+    if normalized in CONV_CHEMICAL_OUTSIDE_DATABASES:
+        return normalized, "chem_outside"
+    if normalized in CONV_CHEMICAL_KEGG_DATABASES:
+        return normalized, "chem_kegg"
+    if normalized == "genes":
+        return normalized, "gene_kegg"
+    if normalized in _RESERVED_DATABASE_NAMES:
+        raise ValueError(
+            f"Database {db!r} is not supported by the KEGG conv operation. "
+            f"{_CONV_PAIRINGS_HINT}"
+        )
+    dynamic = value.upper() if re.fullmatch(r"t\d{5}", value, re.IGNORECASE) else normalized
+    if KEGG_DATABASE_IDENTIFIER.fullmatch(dynamic):
+        return dynamic, "gene_kegg"
+    raise ValueError(f"Unknown KEGG database for conv: {db!r}. {_CONV_PAIRINGS_HINT}")
+
+
+def validate_conv_pair(
+    source_db: str, target_db: str, *, has_entry_ids: bool = False
+) -> tuple[str, str]:
+    """Validate a ``conv`` source/target **pair** and return both normalized.
+
+    The pair is the unit of validation, not each side: every name below is a
+    legitimate conv database, yet ``pathway``/``ncbi-geneid``,
+    ``compound``/``ncbi-geneid`` and ``hsa``/``chebi`` are all HTTP 400. KEGG
+    only converts within one kind, KEGG side <-> outside side:
+
+    * genes — an organism code (``hsa``) or T-number (``T01001``) <->
+      ``ncbi-geneid`` / ``ncbi-proteinid`` / ``uniprot``
+    * chemistry — ``compound`` / ``drug`` / ``glycan`` (or their ``cpd`` /
+      ``dr`` / ``gl`` prefixes) <-> ``pubchem`` / ``chebi``
+
+    Two asymmetries are verified against the live API and encoded here:
+
+    * ``genes`` is a valid **target** only, and only with ``entry_ids``:
+      ``/conv/genes/uniprot:P00533`` is 200 (it resolves the organism for you)
+      while ``/conv/genes/ncbi-geneid`` and ``/conv/uniprot/genes`` are 400.
+    * a 200 does not imply a meaningful pair — ``/conv/pathway/ncbi-geneid:1956``
+      returns 200 with an empty body while ``/conv/pathway/hsa`` is 400, so
+      per-entry probing cannot be used to discover the vocabulary.
+    """
+    source, source_kind = _classify_conv_database(source_db)
+    target, target_kind = _classify_conv_database(target_db)
+
+    source_family, source_side = source_kind.split("_")
+    target_family, target_side = target_kind.split("_")
+    if source_family != target_family or source_side == target_side:
+        raise ValueError(
+            f"KEGG cannot convert {source_db!r} to {target_db!r}. {_CONV_PAIRINGS_HINT}"
+        )
+
+    if source == "genes":
+        raise ValueError(
+            "'genes' is not a valid conv source — use the organism code (e.g. 'hsa') "
+            "or its T-number (e.g. 'T01001')"
+        )
+    if target == "genes" and not has_entry_ids:
+        raise ValueError(
+            "Converting to 'genes' requires entry_ids (KEGG rejects the whole-database "
+            "form); pass e.g. entry_ids=['P00533'] with source_db='uniprot'"
+        )
+    return source, target
 
 
 def validate_query(query: str, *, max_len: int = _QUERY_MAX_LEN) -> str:

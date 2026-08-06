@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Literal
 
 from mcp.server.fastmcp import Context
 
-from kegg_mcp_server.models.brite import BriteInfo
-from kegg_mcp_server.models.common import EntrySummary, SearchResult
+from kegg_mcp_server.models.brite import BriteHierarchy
+from kegg_mcp_server.models.common import SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
-from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
+from kegg_mcp_server.parsers import parse_brite_hierarchy, parse_tab_list
 from kegg_mcp_server.tools._common import (
     READ_ONLY,
     build_search_result,
@@ -18,6 +18,16 @@ from kegg_mcp_server.validators import validate_brite_id, validate_query
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
+
+#: Cap on ``detail_level="full"`` raw text, ~4 chars/token → ~15K tokens. Sized
+#: to stay well inside a single tool response without needing the caller to trim.
+_RAW_CONTENT_MAX_CHARS = 60_000
+
+_RAW_TRUNCATION_NOTICE = (
+    "\n\n[... BRITE hierarchy truncated. Use the level_counts/labels summary to "
+    "navigate, then query the specific entries (e.g. get_ko_info, get_drug_info) "
+    "you need. ...]"
+)
 
 
 def register(mcp: FastMCP) -> None:
@@ -44,26 +54,38 @@ def register(mcp: FastMCP) -> None:
         brite_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> BriteInfo | EntrySummary | ErrorResult:
-        """Get information and hierarchy content for a KEGG BRITE entry.
+    ) -> BriteHierarchy | ErrorResult:
+        """Get the structure of a KEGG BRITE functional hierarchy.
+
+        BRITE entries are large A/B/C/D trees, not flat-file entries, so the
+        result is a bounded summary: the level line counts, the leaf column
+        names, and the labels of the top two levels.
 
         Args:
-            brite_id: KEGG BRITE hierarchy ID (e.g. 'br:ko00001' for KO hierarchy).
-            detail_level: 'summary' (default, compact — omits raw_content) or 'full'
-                (includes the complete raw hierarchy text, which can be very large).
+            brite_id: KEGG BRITE hierarchy ID (e.g. 'br:ko00001' for the KO
+                hierarchy, 'br:br08303' for the ATC drug classification).
+            detail_level: 'summary' (default) or 'full' (adds raw_content, the
+                raw hierarchy text — TRUNCATED, since the largest hierarchies are
+                several megabytes).
         """
         brite_id = validate_brite_id(brite_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(brite_id)
         if not raw.strip():
             return not_found_result("BRITE entry", brite_id)
-        parsed = parse_flat_entry(raw)
+
+        parsed = parse_brite_hierarchy(raw)
+        hierarchy = BriteHierarchy(entry=brite_id, detail_level=detail_level, **parsed)
         if detail_level != "full":
-            return EntrySummary(**summarize_flat_entry(parsed))
-        return BriteInfo(
-            entry=parsed.get("entry", brite_id),
-            name=parsed.get("name", ""),
-            definition=parsed.get("definition"),
-            dblinks=parsed.get("dblinks"),
-            raw_content=raw,
-        )
+            return hierarchy
+
+        # The cap is NOT optional. /get/br:ko00001 is 4.3 MB and
+        # /get/br:hsa00001 is 6.8 MB; before this tool was fixed it errored out,
+        # which accidentally protected the caller's context window. Returning the
+        # raw text now would trade a confusing error for a context bomb.
+        if len(raw) > _RAW_CONTENT_MAX_CHARS:
+            hierarchy.raw_content = raw[:_RAW_CONTENT_MAX_CHARS] + _RAW_TRUNCATION_NOTICE
+            hierarchy.raw_truncated = True
+        else:
+            hierarchy.raw_content = raw
+        return hierarchy

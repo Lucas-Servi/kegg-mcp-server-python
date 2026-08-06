@@ -1,6 +1,6 @@
 """Pydantic models for KEGG database entities."""
 
-from kegg_mcp_server.models.brite import BriteInfo
+from kegg_mcp_server.models.brite import BriteHierarchy, BriteInfo
 from kegg_mcp_server.models.common import (
     BatchLookupResult,
     ConversionResult,
@@ -23,6 +23,7 @@ from kegg_mcp_server.models.reaction import ReactionInfo
 
 __all__ = [
     "BatchLookupResult",
+    "BriteHierarchy",
     "BriteInfo",
     "CompoundInfo",
     "ConversionResult",
