@@ -30,6 +30,13 @@ pip install kegg-mcp-server
 kegg-mcp-server
 ```
 
+> **Requires the MCP Python SDK v2** (`mcp>=2,<3`, protocol revision
+> `2026-07-28`). Versions up to 0.3.1 ran on the 1.x SDK; because mcp 2.0 removed
+> `mcp.server.fastmcp`, that is a breaking dependency change, which is why this is
+> 0.4.0 rather than a patch. Nothing changes for **clients** — an mcp 2.x server
+> answers every earlier protocol revision from the same app, so a host still on
+> the 1.x SDK connects unchanged and negotiates `2025-11-25`.
+
 ### Claude Desktop
 
 Add to your `claude_desktop_config.json`:

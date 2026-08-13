@@ -10,7 +10,7 @@
       "name": "kegg-mcp-server",
       "source": ".",
       "description": "Query KEGG via 34 MCP tools. No API key required; terms: https://www.kegg.jp/kegg/rest/.",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "author": {
         "name": "Lucas Servi"
       },

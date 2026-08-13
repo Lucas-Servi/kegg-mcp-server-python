@@ -5,15 +5,15 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
 
-def register_resources(mcp: FastMCP) -> None:
+def register_resources(mcp: MCPServer) -> None:
 
     @mcp.resource("kegg://pathway/{pathway_id}")
     async def pathway_resource(pathway_id: str, ctx: Context = None) -> str:

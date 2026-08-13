@@ -10,6 +10,22 @@ cd kegg-mcp-server-python
 pip install -e ".[dev]"
 ```
 
+### The `mcp` pin has an upper bound on purpose
+
+`mcp>=2,<3`. Both ends are load-bearing:
+
+- **Lower**: the server is built on `mcp.server.mcpserver.MCPServer`, which does not
+  exist in the 1.x SDK.
+- **Upper**: the pin used to be an unbounded `mcp>=1.20`, and when mcp 2.0 shipped it
+  deleted `mcp.server.fastmcp` — so `uvx kegg-mcp-server` started resolving an SDK the
+  published code could not import. **Never leave this dependency unbounded.**
+
+The vendored set for the MCPB bundle is derived from `requirements.txt` by
+`.github/workflows/release-mcpb.yml` rather than repeated in the workflow, so there is
+one list to update. A version bump must land in **four** files —
+`src/kegg_mcp_server/__init__.py`, `manifest.json`, `.claude-plugin/plugin.json` and
+`.claude-plugin/marketplace.json` — and `tests/test_versioning.py` fails if any drifts.
+
 ## Running Tests
 
 ```bash
@@ -34,7 +50,9 @@ This repository expects:
 
 ## Adding a New Tool
 
-1. Create `src/kegg_mcp_server/tools/<your_tool>.py` with a `register(mcp: FastMCP)` function
+1. Create `src/kegg_mcp_server/tools/<your_tool>.py` with a `register(mcp: MCPServer)` function
+   (`from mcp.server.mcpserver import MCPServer, Context` — `mcp.server.fastmcp` was deleted in
+   mcp 2.0), decorating each tool `@mcp.tool(annotations=READ_ONLY)`
 2. Add input validation calls from `kegg_mcp_server.validators`
 3. Register in `src/kegg_mcp_server/tools/__init__.py`
 4. Add entry to `manifest.json`

@@ -6,10 +6,10 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
 
-def register_prompts(mcp: FastMCP) -> None:
+def register_prompts(mcp: MCPServer) -> None:
 
     @mcp.prompt()
     def pathway_enrichment_analysis(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import BatchLookupResult, ConversionResult, LinkResult
 from kegg_mcp_server.models.errors import ErrorResult
@@ -11,12 +11,12 @@ from kegg_mcp_server.tools._common import READ_ONLY, kegg_tool
 from kegg_mcp_server.validators import validate_conv_pair, validate_link_database
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
 _MAX_BATCH = 50
 
 
-def register(mcp: FastMCP) -> None:
+def register(mcp: MCPServer) -> None:
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool

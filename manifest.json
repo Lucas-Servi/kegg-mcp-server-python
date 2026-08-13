@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "kegg-mcp-server",
   "display_name": "KEGG MCP Server",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Query the KEGG bioinformatics database (pathways, genes, compounds, drugs, and more) from Claude via the public KEGG REST API.",
   "long_description": "Read-only MCP server for the KEGG REST API. Exposes 34 tools across 13 categories (pathways, genes, compounds, reactions, enzymes, diseases, drugs, modules, orthology, glycans, BRITE hierarchies, cross-database lookup, ASCII visualization) plus 9 URI resource templates and 4 guided bioinformatics prompts. Every tool is marked readOnly+idempotent. Responses are structured Pydantic JSON with a summary/full detail switch to keep context usage small. No API key is required. KEGG states that its REST API is for academic use by academic users; other users must follow KEGG's non-academic-use guidance at https://www.kegg.jp/kegg/rest/.",
   "author": {

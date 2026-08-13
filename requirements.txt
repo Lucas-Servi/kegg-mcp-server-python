@@ -1,5 +1,5 @@
 # Runtime dependencies (kept in sync with pyproject.toml)
-mcp>=1.20
+mcp>=2,<3
 httpx>=0.27
 pydantic>=2.0
 cachetools>=5.3

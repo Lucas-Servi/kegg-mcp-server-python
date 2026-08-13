@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.brite import BriteHierarchy
 from kegg_mcp_server.models.common import SearchResult
@@ -21,7 +21,7 @@ from kegg_mcp_server.validators import (
 )
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
 #: Cap on ``detail_level="full"`` raw text, ~4 chars/token → ~15K tokens. Sized
 #: to stay well inside a single tool response without needing the caller to trim.
@@ -34,7 +34,7 @@ _RAW_TRUNCATION_NOTICE = (
 )
 
 
-def register(mcp: FastMCP) -> None:
+def register(mcp: MCPServer) -> None:
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool

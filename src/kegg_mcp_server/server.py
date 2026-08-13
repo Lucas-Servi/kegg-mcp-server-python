@@ -1,4 +1,9 @@
-"""FastMCP server entry point for the KEGG MCP server."""
+"""Entry point for the KEGG MCP server.
+
+Built on ``MCPServer`` from ``mcp>=2`` (protocol 2026-07-28). An mcp 2.x server
+also answers every earlier protocol revision from the same app, so clients still
+on the 1.x SDK connect unchanged.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +13,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from kegg_mcp_server import __version__
 from kegg_mcp_server.cache import TTLCache
@@ -22,7 +27,7 @@ class AppContext:
 
 
 @asynccontextmanager
-async def lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
+async def lifespan(server: MCPServer) -> AsyncIterator[AppContext]:
     cache = TTLCache(maxsize=1024, default_ttl=300)
     async with httpx.AsyncClient(
         base_url="https://rest.kegg.jp",
@@ -33,7 +38,7 @@ async def lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         yield AppContext(kegg=KEGGClient(http, cache))
 
 
-mcp = FastMCP(
+mcp = MCPServer(
     "KEGG MCP Server",
     lifespan=lifespan,
     instructions=(
@@ -81,8 +86,8 @@ def main() -> None:
     setup_logging()
 
     if args.transport == "streamable-http":
-        mcp.settings.host = args.host
-        mcp.settings.port = args.port
-        mcp.run(transport="streamable-http")
+        # mcp 2.x moved transport settings off the constructor and off `Settings`:
+        # `MCPServer(port=…)` is a TypeError and `mcp.settings.host` no longer exists.
+        mcp.run(transport="streamable-http", host=args.host, port=args.port)
     else:
         mcp.run(transport="stdio")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
@@ -17,7 +17,7 @@ from kegg_mcp_server.tools._common import (
 from kegg_mcp_server.validators import validate_query, validate_reaction_id
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
 
 def _build(p: dict) -> ReactionInfo:
@@ -35,7 +35,7 @@ def _build(p: dict) -> ReactionInfo:
     )
 
 
-def register(mcp: FastMCP) -> None:
+def register(mcp: MCPServer) -> None:
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool

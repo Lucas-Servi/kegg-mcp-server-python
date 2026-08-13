@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "kegg-mcp-server",
   "displayName": "KEGG MCP Server",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Query KEGG through 34 tools, 9 resources, and 4 prompts. No API key required; terms: https://www.kegg.jp/kegg/rest/.",
   "author": {
     "name": "Lucas Servi",

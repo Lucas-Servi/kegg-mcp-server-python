@@ -101,11 +101,14 @@ def test_all_33_tools_register(fake_mcp: FakeMCP) -> None:
 
 
 def test_every_tool_has_read_only_annotation(fake_mcp: FakeMCP) -> None:
+    # snake_case: mcp>=2 renamed every wire field on the Python side. The
+    # camelCase spellings raise AttributeError, so this test is also the guard
+    # that the annotations constant was migrated and not just constructed.
     for name, annot in fake_mcp.annotations.items():
         assert annot is not None, f"{name} missing annotations"
-        assert annot.readOnlyHint is True, f"{name} must be readOnly"
-        assert annot.idempotentHint is True
-        assert annot.destructiveHint is False
+        assert annot.read_only_hint is True, f"{name} must be readOnly"
+        assert annot.idempotent_hint is True
+        assert annot.destructive_hint is False
 
 
 def test_server_module_registers_same_33_tools() -> None:

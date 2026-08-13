@@ -14,11 +14,15 @@ from kegg_mcp_server.models.common import SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
 
 # Every KEGG tool is a pure read against the public KEGG REST API.
+# Field names are snake_case under mcp>=2 (the wire JSON stays camelCase via
+# aliases). camelCase kwargs still construct, but reading `.readOnlyHint` back
+# raises AttributeError, so keep both sides on the new spelling.
 READ_ONLY = ToolAnnotations(
-    readOnlyHint=True,
-    idempotentHint=True,
-    destructiveHint=False,
-    openWorldHint=True,
+    read_only_hint=True,
+    idempotent_hint=True,
+    destructive_hint=False,
+    # True: these hit a live external API, so results can change under us.
+    open_world_hint=True,
 )
 
 # Hard cap so a pathological max_results value can't dump the whole KEGG DB

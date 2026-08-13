@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.ascii.chain import render_chain
 from kegg_mcp_server.ascii.grid import render_grid
@@ -19,10 +19,10 @@ from kegg_mcp_server.tools._common import READ_ONLY, kegg_tool
 from kegg_mcp_server.validators import validate_pathway_id
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
 
-def register(mcp: FastMCP) -> None:
+def register(mcp: MCPServer) -> None:
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool

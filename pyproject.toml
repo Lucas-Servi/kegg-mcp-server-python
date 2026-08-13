@@ -34,7 +34,11 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "mcp>=1.20",
+    # Both bounds are load-bearing, and this pin is what `uvx kegg-mcp-server`
+    # resolves. The server uses mcp.server.mcpserver.MCPServer, which only exists
+    # in 2.x; and leaving the upper bound off is what silently broke the published
+    # package when mcp 2.0 deleted mcp.server.fastmcp.
+    "mcp>=2,<3",
     "httpx>=0.27",
     "pydantic>=2.0",
     "cachetools>=5.3",
