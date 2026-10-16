@@ -6,7 +6,6 @@ from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.compound import CompoundInfo
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import (
     parse_flat_entry,
     parse_link_response,
@@ -16,6 +15,7 @@ from kegg_mcp_server.parsers import (
 from kegg_mcp_server.tools._common import (
     READ_ONLY,
     build_search_result,
+    cap_list,
     kegg_tool,
     not_found_result,
 )
@@ -49,8 +49,11 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def search_compounds(
-        query: str, search_type: str = "name", max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+        query: str,
+        search_type: Literal["name", "formula", "exact_mass", "mol_weight", "nop"] = "name",
+        max_results: int = 25,
+        ctx: Context = None,
+    ) -> SearchResult:
         """Search KEGG compounds by name or chemical property.
 
         Args:
@@ -70,7 +73,7 @@ def register(mcp: MCPServer) -> None:
         compound_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> CompoundInfo | EntrySummary | ErrorResult:
+    ) -> CompoundInfo | EntrySummary:
         """Get detailed information for a KEGG compound entry.
 
         Args:
@@ -80,8 +83,8 @@ def register(mcp: MCPServer) -> None:
         compound_id = validate_compound_id(compound_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(compound_id)
-        if not raw.strip():
-            return not_found_result("compound", compound_id)
+        if not raw or raw.isspace():
+            not_found_result("compound", compound_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)
@@ -90,18 +93,21 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def get_compound_reactions(
-        compound_id: str, ctx: Context = None
-    ) -> dict | ErrorResult:
+        compound_id: str, max_results: int = 100, ctx: Context = None
+    ) -> dict:
         """Get all reactions involving a KEGG compound.
 
         Args:
             compound_id: KEGG compound ID (e.g. 'C00002').
+            max_results: Maximum number of reactions to return (capped at 100).
         """
         compound_id = validate_compound_id(compound_id)
         kegg = ctx.request_context.lifespan_context.kegg
         pairs = parse_link_response(await kegg.link("reaction", compound_id))
+        limited, total, truncated = cap_list(pairs, max_results)
         return {
             "compound_id": compound_id,
-            "reactions": [{"compound": a, "reaction": b} for a, b in pairs],
-            "count": len(pairs),
+            "reactions": [{"compound": a, "reaction": b} for a, b in limited],
+            "count": total,
+            "truncated": truncated,
         }

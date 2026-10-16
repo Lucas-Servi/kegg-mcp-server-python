@@ -9,7 +9,9 @@ An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (
 
 Built on the official [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) v2 (`MCPServer`), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, a three-request-per-second rate limit, structured JSON stderr logging, and batch helpers out of the box. No API key is required.
 
-Responses are token-aware by default: `get_*_info` tools return a compact `EntrySummary` (entry id, name, class, description, counts of linked entities) unless you pass `detail_level="full"`. Errors are returned as a typed `ErrorResult` the model can reason about, not raised as exceptions.
+Responses are token-aware by default: `get_*_info` tools return a compact `EntrySummary` (entry id, name, class, description, counts of linked entities) unless you pass `detail_level="full"`. List- and mapping-shaped outputs are capped at 100 items and report the full count plus `truncated`. Failures are MCP tool errors (`isError: true`) whose text is a typed `ErrorResult` JSON (`code`, `retryable`, `hint`) the model can reason about.
+
+> **0.5.0 changes output shapes:** failures (including not-found) are now `isError: true` instead of a normal result; `convert_identifiers` maps each source ID to a **list** of targets; link/ortholog/pathway-gene/DDI outputs are capped with `truncated`; `batch_entry_lookup` returns summaries unless `detail_level="full"`; logging is configured with `--log-level` / `--log-tracebacks` instead of environment variables.
 
 > **Usage notice:** This is a community project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories. [KEGG states that its REST API is for academic use by academic users](https://www.kegg.jp/kegg/rest/); non-academic users must follow KEGG's linked non-academic-use guidance. Users are responsible for ensuring that their use complies with those terms.
 
@@ -190,6 +192,9 @@ kegg-mcp-server --transport streamable-http --host 0.0.0.0 --port 8080
 
 # python -m also works
 python -m kegg_mcp_server
+
+# Logging (stderr, JSON): verbosity and full tracebacks
+kegg-mcp-server --log-level DEBUG --log-tracebacks
 ```
 
 ---
@@ -199,7 +204,7 @@ python -m kegg_mcp_server
 - The only network destination is the public KEGG REST API at `https://rest.kegg.jp` (all tools, resources, and the ASCII renderer's KGML fetch go there). Queries you make (IDs, search terms) are sent to KEGG; nothing is sent anywhere else, and there is no telemetry.
 - Responses are cached in memory only (per-operation TTL) and discarded when the server exits; nothing is written to disk.
 - Logs are structured JSON on stderr only, on your machine.
-- No API key or account. Environment variables read: `LOG_LEVEL` and `KEGG_MCP_LOG_TRACEBACKS` (log verbosity only). The HTTP client (httpx) also honours the standard proxy and CA-bundle variables (`HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, …) so it works behind corporate proxies.
+- No API key or account, and the server reads no environment variables of its own (logging is set by CLI flags). The HTTP client (httpx) honours the standard proxy and CA-bundle variables (`HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, …) so it works behind corporate proxies.
 - The `uvx` launcher downloads the pinned `kegg-mcp-server` package and its dependencies from PyPI on first run.
 
 ---
@@ -227,7 +232,7 @@ mcp dev kegg-mcp-server
 src/kegg_mcp_server/
   server.py       MCPServer instance, lifespan (httpx client + TTL cache), CLI
   client.py       KEGGClient: async KEGG REST with retry/backoff + KEGG-politeness semaphore
-  cache.py        Per-op TTL cache (info 24h, list 1h, entry ops 5min)
+  cache.py        Per-op TTL cache, 64 MiB budget (info 24h, list 1h, entry ops 6h)
   parsers.py      KEGG flat-file and tab-delimited response parsers + summarize_flat_entry
   errors.py       KEGGAPIError exception type
   logging.py      JSON stderr logger (stdout is reserved for MCP stdio framing)

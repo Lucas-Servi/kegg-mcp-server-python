@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import ListResult
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.organism import DatabaseInfo
-from kegg_mcp_server.tools._common import MAX_ENTRIES_CAP, READ_ONLY, kegg_tool
+from kegg_mcp_server.tools._common import READ_ONLY, cap_mapping, kegg_tool
 from kegg_mcp_server.validators import validate_info_database
 
 if TYPE_CHECKING:
     from mcp.server.mcpserver import MCPServer
+
+#: Database-style `/info` reports "<N> entries" + "Last update <date>"; `kegg` and
+#: organisms don't, so those leave `release`/`entries` None (full text in `raw_info`).
+_ENTRIES_RE = re.compile(r"([\d,]+)\s+entries", re.IGNORECASE)
+_LAST_UPDATE_RE = re.compile(r"Last update\s+(\S+)", re.IGNORECASE)
 
 
 def register(mcp: MCPServer) -> None:
@@ -20,7 +25,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def get_database_info(
         database: str = "kegg", ctx: Context = None
-    ) -> DatabaseInfo | ErrorResult:
+    ) -> DatabaseInfo:
         """Get release information and statistics for a KEGG database.
 
         Args:
@@ -32,22 +37,22 @@ def register(mcp: MCPServer) -> None:
         release = None
         entries = None
         for line in raw.splitlines():
-            if "Release" in line:
-                release = line.strip()
-            if "entries" in line.lower():
-                for p in line.strip().split():
-                    if p.replace(",", "").isdigit():
-                        try:
-                            entries = int(p.replace(",", ""))
-                        except ValueError:
-                            pass
+            m = _ENTRIES_RE.search(line)
+            if m:
+                try:
+                    entries = int(m.group(1).replace(",", ""))
+                except ValueError:
+                    pass
+            m = _LAST_UPDATE_RE.search(line)
+            if m:
+                release = m.group(1)
         return DatabaseInfo(database=database, release=release, entries=entries, raw_info=raw)
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def list_organisms(
         query: str = "", max_results: int = 100, ctx: Context = None
-    ) -> ListResult | ErrorResult:
+    ) -> ListResult:
         """List organisms available in KEGG with their 3-4 letter codes and names.
 
         KEGG has ~12,000 organisms, so the full list is large. Pass `query` to
@@ -92,12 +97,10 @@ def register(mcp: MCPServer) -> None:
                 if needle in code.lower() or needle in name.lower()
             }
 
-        total = len(organisms)
-        bounded = max(1, min(max_results, MAX_ENTRIES_CAP))
-        limited = dict(list(organisms.items())[:bounded])
+        limited, total, truncated = cap_mapping(organisms, max_results)
         return ListResult(
             database="organism",
             total=total,
             items=limited,
-            truncated=total > len(limited),
+            truncated=truncated,
         )

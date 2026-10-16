@@ -6,11 +6,11 @@ from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.enzyme import EnzymeInfo
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
 from kegg_mcp_server.tools._common import (
     READ_ONLY,
     build_search_result,
+    cap_mapping,
     kegg_tool,
     not_found_result,
 )
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 def _build(p: dict) -> EnzymeInfo:
+    genes, _, genes_truncated = cap_mapping(p.get("genes") or {})
     return EnzymeInfo(
         entry=p.get("entry", ""),
         name=p.get("name", ""),
@@ -32,7 +33,8 @@ def _build(p: dict) -> EnzymeInfo:
         comment=p.get("comment"),
         pathway=p.get("pathway"),
         orthology=p.get("orthology"),
-        genes=p.get("gene"),
+        genes=genes or None,
+        genes_truncated=genes_truncated,
         dblinks=p.get("dblinks"),
         references=[Reference(**r) for r in p.get("references", [])],
     )
@@ -44,7 +46,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def search_enzymes(
         query: str, max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+    ) -> SearchResult:
         """Search KEGG enzymes by EC number or name.
 
         Args:
@@ -62,7 +64,7 @@ def register(mcp: MCPServer) -> None:
         enzyme_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> EnzymeInfo | EntrySummary | ErrorResult:
+    ) -> EnzymeInfo | EntrySummary:
         """Get detailed information for a KEGG enzyme (EC number).
 
         Args:
@@ -73,8 +75,8 @@ def register(mcp: MCPServer) -> None:
         kegg = ctx.request_context.lifespan_context.kegg
         entry_id = enzyme_id if enzyme_id.startswith("ec:") else f"ec:{enzyme_id}"
         raw = await kegg.get(entry_id)
-        if not raw.strip():
-            return not_found_result("enzyme", enzyme_id, path_identifier=entry_id)
+        if not raw or raw.isspace():
+            not_found_result("enzyme", enzyme_id, path_identifier=entry_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)

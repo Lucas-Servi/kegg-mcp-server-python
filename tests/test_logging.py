@@ -41,13 +41,22 @@ def test_setup_writes_json_to_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["status"] == 500
 
 
-def test_respects_log_level_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_respects_log_level_arg(monkeypatch: pytest.MonkeyPatch) -> None:
     buf = io.StringIO()
     monkeypatch.setattr(sys, "stderr", buf)
-    monkeypatch.setenv("LOG_LEVEL", "ERROR")
-    setup_logging()
+    setup_logging("ERROR")
     logging.getLogger("kegg_mcp_server").warning("ignored")
     logging.getLogger("kegg_mcp_server").error("visible")
+    lines = [ln for ln in buf.getvalue().splitlines() if ln.strip()]
+    assert len(lines) == 1
+    assert json.loads(lines[0])["msg"] == "visible"
+
+
+def test_unknown_level_falls_back_to_info(monkeypatch: pytest.MonkeyPatch) -> None:
+    buf = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", buf)
+    setup_logging("nonsense")  # must not raise
+    logging.getLogger("kegg_mcp_server").info("visible")
     lines = [ln for ln in buf.getvalue().splitlines() if ln.strip()]
     assert len(lines) == 1
     assert json.loads(lines[0])["msg"] == "visible"
@@ -66,7 +75,6 @@ def test_setup_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_exception_serialized_without_traceback_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     buf = io.StringIO()
     monkeypatch.setattr(sys, "stderr", buf)
-    monkeypatch.delenv("KEGG_MCP_LOG_TRACEBACKS", raising=False)
     setup_logging()
     try:
         raise ValueError("boom")
@@ -81,12 +89,7 @@ def test_exception_serialized_without_traceback_by_default(monkeypatch: pytest.M
 def test_exception_serialized_with_full_traceback(monkeypatch: pytest.MonkeyPatch) -> None:
     buf = io.StringIO()
     monkeypatch.setattr(sys, "stderr", buf)
-    monkeypatch.setenv("KEGG_MCP_LOG_TRACEBACKS", "1")
-    # Need to reimport to pick up env change
-    import kegg_mcp_server.logging as log_mod
-
-    monkeypatch.setattr(log_mod, "_LOG_TRACEBACKS", True)
-    setup_logging()
+    setup_logging("INFO", True)
     try:
         raise ValueError("boom")
     except ValueError:

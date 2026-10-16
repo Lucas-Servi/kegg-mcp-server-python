@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import sys
 from typing import Any
 
@@ -40,10 +39,11 @@ _RESERVED_LOG_ATTRS = frozenset(
 )
 
 
-_LOG_TRACEBACKS = os.getenv("KEGG_MCP_LOG_TRACEBACKS", "0") == "1"
-
-
 class _JsonFormatter(logging.Formatter):
+    def __init__(self, *, log_tracebacks: bool = False) -> None:
+        super().__init__()
+        self._log_tracebacks = log_tracebacks
+
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
             "ts": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S"),
@@ -56,7 +56,7 @@ class _JsonFormatter(logging.Formatter):
                 continue
             payload[key] = value
         if record.exc_info:
-            if _LOG_TRACEBACKS:
+            if self._log_tracebacks:
                 payload["exc"] = self.formatException(record.exc_info)
             else:
                 exc_type, exc_val, _ = record.exc_info
@@ -65,13 +65,17 @@ class _JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
-def setup_logging() -> None:
-    level = os.getenv("LOG_LEVEL", "INFO").upper()
+def setup_logging(level: str = "INFO", log_tracebacks: bool = False) -> None:
     handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(_JsonFormatter())
+    handler.setFormatter(_JsonFormatter(log_tracebacks=log_tracebacks))
 
     logger = logging.getLogger("kegg_mcp_server")
-    logger.setLevel(level)
+    try:
+        logger.setLevel(level.upper())
+    except ValueError:
+        logger.setLevel("INFO")  # unknown level: don't crash startup over verbosity
     logger.handlers.clear()
     logger.addHandler(handler)
     logger.propagate = False
+    # httpx logs every full request URL at INFO, bypassing our redacted request log.
+    logging.getLogger("httpx").setLevel(logging.WARNING)

@@ -6,6 +6,9 @@ import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+from mcp.server.mcpserver.exceptions import ToolError
+
 from kegg_mcp_server.models.ascii import AsciiPathway
 from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.tools import ascii_pathway
@@ -99,17 +102,18 @@ def test_empty_kgml_returns_error() -> None:
     render_tool = _get_render_tool()
     fake_kegg = FakeKEGG(get_response="")
 
-    result = asyncio.run(
-        render_tool(
-            pathway_id="hsa00010",
-            style="chain",
-            max_width=100,
-            max_height=40,
-            ctx=_make_ctx(fake_kegg),
+    with pytest.raises(ToolError) as exc_info:
+        asyncio.run(
+            render_tool(
+                pathway_id="hsa00010",
+                style="chain",
+                max_width=100,
+                max_height=40,
+                ctx=_make_ctx(fake_kegg),
+            )
         )
-    )
 
-    assert isinstance(result, ErrorResult)
+    result = ErrorResult.model_validate_json(str(exc_info.value))
     assert result.code == "kgml_not_available"
     assert "hsa00010" in result.error
 
@@ -118,15 +122,16 @@ def test_invalid_pathway_id_returns_error() -> None:
     render_tool = _get_render_tool()
     fake_kegg = FakeKEGG(get_response="")
 
-    result = asyncio.run(
-        render_tool(
-            pathway_id="../../etc",
-            style="chain",
-            max_width=100,
-            max_height=40,
-            ctx=_make_ctx(fake_kegg),
+    with pytest.raises(ToolError) as exc_info:
+        asyncio.run(
+            render_tool(
+                pathway_id="../../etc",
+                style="chain",
+                max_width=100,
+                max_height=40,
+                ctx=_make_ctx(fake_kegg),
+            )
         )
-    )
 
-    assert isinstance(result, ErrorResult)
+    result = ErrorResult.model_validate_json(str(exc_info.value))
     assert result.code == "validation_error"

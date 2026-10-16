@@ -4,6 +4,7 @@ import re
 from typing import TYPE_CHECKING, Literal
 
 from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.exceptions import ToolError
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
@@ -17,6 +18,7 @@ from kegg_mcp_server.parsers import (
 from kegg_mcp_server.tools._common import (
     READ_ONLY,
     build_search_result,
+    cap_list,
     kegg_tool,
     not_found_result,
 )
@@ -87,7 +89,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def search_pathways(
         query: str, organism_code: str = "map", max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+    ) -> SearchResult:
         """Search KEGG pathways by keyword.
 
         Args:
@@ -116,7 +118,7 @@ def register(mcp: MCPServer) -> None:
         pathway_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> PathwayInfo | EntrySummary | ErrorResult:
+    ) -> PathwayInfo | EntrySummary:
         """Get detailed information for a KEGG pathway.
 
         Args:
@@ -127,8 +129,8 @@ def register(mcp: MCPServer) -> None:
         pathway_id = validate_pathway_id(pathway_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(pathway_id)
-        if not raw.strip():
-            return not_found_result("pathway", pathway_id)
+        if not raw or raw.isspace():
+            not_found_result("pathway", pathway_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)
@@ -137,66 +139,77 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def get_pathway_genes(
-        pathway_id: str, ctx: Context = None
-    ) -> PathwayLinks | ErrorResult:
+        pathway_id: str, max_results: int = 100, ctx: Context = None
+    ) -> PathwayLinks:
         """Get all genes associated with a KEGG pathway.
 
         Args:
             pathway_id: KEGG pathway ID (e.g. 'hsa00010'). Use organism-specific
                 IDs (e.g. 'pae00350' for P. aeruginosa) — reference pathways
                 ('map*') are not supported by the KEGG gene link API.
+            max_results: Maximum number of pairs to return (capped at 100).
         """
         pathway_id = validate_pathway_id(pathway_id)
         bare = pathway_id.removeprefix("path:")
         if re.match(r"^map\d+$", bare):
-            return ErrorResult(
-                error=(
-                    f"Gene link queries are not supported for reference pathways ('{bare}'). "
-                    "Use an organism-specific pathway ID instead "
-                    "(e.g. 'pae00350' for P. aeruginosa, 'eco00350' for E. coli). "
-                    "Use search_pathways(organism_code='pae') to find organism-specific IDs."
-                ),
-                retryable=False,
-                status=None,
-                path=None,
-                hint="Replace 'map' prefix with the organism code (e.g. pae, eco, hsa).",
+            raise ToolError(
+                ErrorResult(
+                    error=(
+                        f"Gene link queries are not supported for reference pathways ('{bare}'). "
+                        "Use an organism-specific pathway ID instead "
+                        "(e.g. 'pae00350' for P. aeruginosa, 'eco00350' for E. coli). "
+                        "Use search_pathways(organism_code='pae') to find organism-specific IDs."
+                    ),
+                    code="unsupported_pathway_type",
+                    retryable=False,
+                    hint="Replace 'map' prefix with the organism code (e.g. pae, eco, hsa).",
+                ).model_dump_json()
             )
         kegg = ctx.request_context.lifespan_context.kegg
         source = _ensure_path_prefix(pathway_id)
         target = _pathway_genes_target(pathway_id)
         pairs = parse_link_response(await kegg.link(target, source))
-        return PathwayLinks(pathway_id=pathway_id, linked_db=target, pairs=pairs, count=len(pairs))
+        limited, total, truncated = cap_list(pairs, max_results)
+        return PathwayLinks(
+            pathway_id=pathway_id, linked_db=target, pairs=limited, count=total, truncated=truncated
+        )
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def get_pathway_compounds(
-        pathway_id: str, ctx: Context = None
-    ) -> PathwayLinks | ErrorResult:
+        pathway_id: str, max_results: int = 100, ctx: Context = None
+    ) -> PathwayLinks:
         """Get all compounds (metabolites) associated with a KEGG pathway.
 
         Args:
             pathway_id: KEGG pathway ID (e.g. 'map00010').
+            max_results: Maximum number of pairs to return (capped at 100).
         """
         pathway_id = validate_pathway_id(pathway_id)
         kegg = ctx.request_context.lifespan_context.kegg
         pairs = parse_link_response(await kegg.link("compound", _ensure_path_prefix(pathway_id)))
+        limited, total, truncated = cap_list(pairs, max_results)
         return PathwayLinks(
-            pathway_id=pathway_id, linked_db="compound", pairs=pairs, count=len(pairs)
+            pathway_id=pathway_id, linked_db="compound", pairs=limited, count=total,
+            truncated=truncated,
         )
 
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def get_pathway_reactions(
-        pathway_id: str, ctx: Context = None
-    ) -> PathwayLinks | ErrorResult:
+        pathway_id: str, max_results: int = 100, ctx: Context = None
+    ) -> PathwayLinks:
         """Get all reactions in a KEGG pathway.
 
         Args:
             pathway_id: KEGG pathway ID (e.g. 'hsa00010').
+            max_results: Maximum number of pairs to return (capped at 100).
         """
         pathway_id = validate_pathway_id(pathway_id)
         kegg = ctx.request_context.lifespan_context.kegg
         pairs = parse_link_response(await kegg.link("reaction", _ensure_path_prefix(pathway_id)))
+        limited, total, truncated = cap_list(pairs, max_results)
         return PathwayLinks(
-            pathway_id=pathway_id, linked_db="reaction", pairs=pairs, count=len(pairs)
+            pathway_id=pathway_id, linked_db="reaction", pairs=limited, count=total,
+            truncated=truncated,
         )

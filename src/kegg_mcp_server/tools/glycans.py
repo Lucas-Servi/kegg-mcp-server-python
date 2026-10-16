@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Literal
 from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.glycan import GlycanInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
 from kegg_mcp_server.tools._common import (
@@ -25,7 +24,7 @@ def _build(p: dict) -> GlycanInfo:
         entry=p.get("entry", ""),
         name=p.get("name", ""),
         composition=p.get("composition"),
-        mass=p.get("exact_mass") or p.get("mol_weight"),
+        mass=p.get("mass"),
         remark=p.get("remark"),
         reaction=p.get("reaction"),
         pathway=p.get("pathway"),
@@ -42,7 +41,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def search_glycans(
         query: str, max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+    ) -> SearchResult:
         """Search KEGG glycan database by keyword or composition.
 
         Args:
@@ -60,7 +59,7 @@ def register(mcp: MCPServer) -> None:
         glycan_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> GlycanInfo | EntrySummary | ErrorResult:
+    ) -> GlycanInfo | EntrySummary:
         """Get detailed information for a KEGG glycan entry.
 
         Args:
@@ -70,8 +69,8 @@ def register(mcp: MCPServer) -> None:
         glycan_id = validate_glycan_id(glycan_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(glycan_id)
-        if not raw.strip():
-            return not_found_result("glycan", glycan_id)
+        if not raw or raw.isspace():
+            not_found_result("glycan", glycan_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)

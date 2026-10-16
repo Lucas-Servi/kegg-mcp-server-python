@@ -62,6 +62,17 @@ class KGMLPathway:
 
 def parse_kgml(xml_text: str) -> KGMLPathway:
     """Parse KGML XML into a KGMLPathway dataclass."""
+    try:
+        return _parse_kgml(xml_text)
+    except ValueError as exc:
+        # A malformed numeric attribute (e.g. non-integer x/y/id) is the same
+        # kind of problem as unparseable XML, not a bad caller-supplied
+        # identifier — raise it as ET.ParseError so it isn't reported as
+        # "check the identifier format" (that blames the wrong thing).
+        raise ET.ParseError(f"Malformed KGML: {exc}") from exc
+
+
+def _parse_kgml(xml_text: str) -> KGMLPathway:
     root = ET.fromstring(xml_text)
 
     pathway = KGMLPathway(

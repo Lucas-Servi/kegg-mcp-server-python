@@ -17,5 +17,7 @@ class EnzymeInfo(BaseModel):
     pathway: dict[str, str] | None = None
     orthology: dict[str, str] | None = None
     genes: dict[str, str] | None = None
+    #: Set when `genes` (organism -> gene list) is a bounded subset.
+    genes_truncated: bool = False
     dblinks: dict[str, list[str]] | None = None
     references: list[Reference] | None = None

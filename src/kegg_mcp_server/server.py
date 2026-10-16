@@ -28,10 +28,13 @@ class AppContext:
 
 @asynccontextmanager
 async def lifespan(server: MCPServer) -> AsyncIterator[AppContext]:
-    cache = TTLCache(maxsize=1024, default_ttl=300)
+    cache = TTLCache()
     async with httpx.AsyncClient(
         base_url="https://rest.kegg.jp",
-        timeout=30.0,
+        # KEGG keeps idle connections 60s; httpx's 5s default expiry means most
+        # tool calls (gaps between them usually exceed 5s) pay connect+TLS again.
+        limits=httpx.Limits(max_connections=3, max_keepalive_connections=3, keepalive_expiry=55),
+        timeout=httpx.Timeout(connect=5.0, read=30.0, write=10.0, pool=30.0),
         follow_redirects=False,
         headers={"User-Agent": f"kegg-mcp-server/{__version__}"},
     ) as http:
@@ -81,9 +84,19 @@ def main() -> None:
         default=8080,
         help="Port for streamable-http transport (default: 8080)",
     )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Log level written to stderr (default: INFO)",
+    )
+    parser.add_argument(
+        "--log-tracebacks",
+        action="store_true",
+        help="Include full exception tracebacks in logs (default: off)",
+    )
     args = parser.parse_args()
 
-    setup_logging()
+    setup_logging(args.log_level, args.log_tracebacks)
 
     if args.transport == "streamable-http":
         # mcp 2.x moved transport settings off the constructor and off `Settings`:

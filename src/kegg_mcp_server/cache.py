@@ -13,20 +13,21 @@ from typing import Any
 
 import cachetools
 
-_DEFAULT_TTL_SECONDS = 300.0
+_DEFAULT_TTL_SECONDS = 6 * 3600.0
 
 # Per-op TTLs. `info` is release metadata (stable for weeks); `list` enumerates
-# a whole database (stable for hours); other ops fetch entry data that can
-# change on KEGG curator edits but realistically churn is low.
+# a whole database (stable for hours); entry ops change at most on KEGG's daily update.
 _TTL_BY_OP: dict[str, float] = {
     "info": 24 * 3600.0,
     "list": 3600.0,
-    "get": 300.0,
-    "find": 300.0,
-    "conv": 300.0,
-    "link": 300.0,
-    "ddi": 300.0,
+    "get": 6 * 3600.0,
+    "find": 6 * 3600.0,
+    "conv": 6 * 3600.0,
+    "link": 6 * 3600.0,
+    "ddi": 6 * 3600.0,
 }
+
+_MAX_CACHE_BYTES = 64 * 1024 * 1024
 
 
 def _op_from_path(key: str) -> str:
@@ -39,17 +40,19 @@ def _op_from_path(key: str) -> str:
 class TTLCache:
     """TTL cache keyed on KEGG REST paths with per-op expiries.
 
-    Backed by `cachetools.TLRUCache`; the timer uses monotonic time so expiry
-    is robust to wall-clock changes.
+    Backed by `cachetools.TLRUCache`, bounded by response bytes rather than
+    entry count (a single BRITE hierarchy body can be several MB on its own).
+    The timer uses monotonic time so expiry is robust to wall-clock changes.
     """
 
     def __init__(
-        self, maxsize: int = 1024, default_ttl: float = _DEFAULT_TTL_SECONDS
+        self, maxsize: int = _MAX_CACHE_BYTES, default_ttl: float = _DEFAULT_TTL_SECONDS
     ) -> None:
         self._default_ttl = default_ttl
         self._cache: cachetools.TLRUCache[str, Any] = cachetools.TLRUCache(
             maxsize=maxsize,
             ttu=self._ttu,
+            getsizeof=len,
             timer=time.monotonic,
         )
 
@@ -60,7 +63,10 @@ class TTLCache:
         return self._cache.get(key)
 
     def set(self, key: str, value: Any) -> None:
-        self._cache[key] = value
+        try:
+            self._cache[key] = value
+        except ValueError:
+            pass  # value bigger than maxsize (cachetools can't cache it) — just skip
 
     def clear(self) -> None:
         self._cache.clear()

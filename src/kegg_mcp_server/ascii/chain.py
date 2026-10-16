@@ -75,9 +75,11 @@ def _render_reactions(pathway: KGMLPathway, lines: list[str], max_width: int) ->
             all_substrates.add(sub_id)
             for prod_id in rxn.product_ids:
                 all_products.add(prod_id)
+                # Reversibility is shown by the arrow glyph on this one edge —
+                # adding a second edge back from product to substrate made a
+                # DFS walk immediately retrace it, rendering every reversible
+                # step as A -> B -> A instead of continuing the chain.
                 graph.setdefault(sub_id, []).append((rxn_label, prod_id, reversible))
-                if reversible:
-                    graph.setdefault(prod_id, []).append((rxn_label, sub_id, True))
 
     # Find source nodes (substrates not appearing as products, or all if cyclic)
     sources = all_substrates - all_products

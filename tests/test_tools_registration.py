@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 from kegg_mcp_server.models.common import EntrySummary, SearchResult
 from kegg_mcp_server.models.errors import ErrorResult
@@ -16,6 +17,18 @@ from kegg_mcp_server.server import mcp as real_mcp
 from kegg_mcp_server.tools import register_all_tools
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def _expect_tool_error(coro: Any) -> ErrorResult:
+    """Run a tool call expected to fail and return its `ErrorResult`.
+
+    Failures now raise `ToolError` (so the MCP call reports `is_error=True`)
+    with the `ErrorResult` JSON as the message, instead of returning the
+    model normally.
+    """
+    with pytest.raises(ToolError) as exc_info:
+        asyncio.run(coro)
+    return ErrorResult.model_validate_json(str(exc_info.value))
 
 
 class FakeMCP:
@@ -167,9 +180,8 @@ def test_get_pathway_info_full_returns_pathway_info(fake_mcp: FakeMCP) -> None:
 def test_get_info_empty_response_returns_not_found(
     fake_mcp: FakeMCP, tool_name: str, entry_id: str
 ) -> None:
-    result = asyncio.run(fake_mcp.tools[tool_name](entry_id, ctx=_make_ctx(FakeKEGG())))
+    result = _expect_tool_error(fake_mcp.tools[tool_name](entry_id, ctx=_make_ctx(FakeKEGG())))
 
-    assert isinstance(result, ErrorResult)
     assert result.code == "not_found"
     assert result.status == 404
     assert result.retryable is False
@@ -257,12 +269,11 @@ def test_search_tool_marks_not_truncated_when_fits(fake_mcp: FakeMCP) -> None:
 
 def test_batch_entry_lookup_rejects_oversize(fake_mcp: FakeMCP) -> None:
     fake = FakeKEGG()
-    result = asyncio.run(
+    result = _expect_tool_error(
         fake_mcp.tools["batch_entry_lookup"](
             entry_ids=[f"C{i:05d}" for i in range(51)], ctx=_make_ctx(fake)
         )
     )
-    assert isinstance(result, ErrorResult)
     assert "Maximum 50" in result.error
 
 
@@ -317,8 +328,8 @@ def test_convert_identifiers_does_not_double_prefix(fake_mcp: FakeMCP) -> None:
     assert fake.conv_calls == [("uniprot", "hsa:1956")]
 
 
-def test_convert_identifiers_joins_multiple_ids_and_caps_at_ten(fake_mcp: FakeMCP) -> None:
-    """KEGG's GET limit is 10 entries; each still carries its own prefix."""
+def test_convert_identifiers_chunks_by_ten(fake_mcp: FakeMCP) -> None:
+    """KEGG's GET limit is 10 entries per call; longer lists are chunked, not dropped."""
     fake = _RecordingConvKEGG(conv_response="")
     asyncio.run(
         fake_mcp.tools["convert_identifiers"](
@@ -328,10 +339,25 @@ def test_convert_identifiers_joins_multiple_ids_and_caps_at_ten(fake_mcp: FakeMC
             ctx=_make_ctx(fake),
         )
     )
-    (_, source), = fake.conv_calls
-    ids = source.split("+")
-    assert len(ids) == 10
-    assert ids[0] == "compound:C00000"
+    assert len(fake.conv_calls) == 2
+    first_ids = fake.conv_calls[0][1].split("+")
+    second_ids = fake.conv_calls[1][1].split("+")
+    assert len(first_ids) == 10
+    assert len(second_ids) == 2
+    assert first_ids[0] == "compound:C00000"
+    assert second_ids[-1] == "compound:C00011"
+
+
+def test_convert_identifiers_rejects_empty_entry_ids(fake_mcp: FakeMCP) -> None:
+    """An explicit `[]` must not fall through to converting the whole database."""
+    fake = _RecordingConvKEGG(conv_response="")
+    result = _expect_tool_error(
+        fake_mcp.tools["convert_identifiers"](
+            source_db="hsa", target_db="uniprot", entry_ids=[], ctx=_make_ctx(fake)
+        )
+    )
+    assert result.code == "validation_error"
+    assert fake.conv_calls == []
 
 
 def test_convert_identifiers_rejects_kegg_target_without_calling_kegg(
@@ -343,12 +369,11 @@ def test_convert_identifiers_rejects_kegg_target_without_calling_kegg(
     still costs a round-trip to KEGG and a rate-limit slot.
     """
     fake = _RecordingConvKEGG(conv_response="")
-    result = asyncio.run(
+    result = _expect_tool_error(
         fake_mcp.tools["convert_identifiers"](
             source_db="compound", target_db="kegg", entry_ids=["C00002"], ctx=_make_ctx(fake)
         )
     )
-    assert isinstance(result, ErrorResult)
     assert result.code == "validation_error"
     assert fake.conv_calls == []
 
@@ -356,12 +381,11 @@ def test_convert_identifiers_rejects_kegg_target_without_calling_kegg(
 def test_convert_identifiers_rejects_cross_kind_pair(fake_mcp: FakeMCP) -> None:
     """`compound` and `uniprot` are both real conv databases; the pair is 400."""
     fake = _RecordingConvKEGG(conv_response="")
-    result = asyncio.run(
+    result = _expect_tool_error(
         fake_mcp.tools["convert_identifiers"](
             source_db="compound", target_db="uniprot", ctx=_make_ctx(fake)
         )
     )
-    assert isinstance(result, ErrorResult)
     assert result.code == "validation_error"
     assert fake.conv_calls == []
 
@@ -403,6 +427,18 @@ def test_drug_interactions_parses_ddi(fake_mcp: FakeMCP) -> None:
     )
     assert isinstance(result, DrugInteractionResult)
     assert result.count == 1
+
+
+def test_drug_interactions_are_capped(fake_mcp: FakeMCP) -> None:
+    # Live /ddi/D00564 is ~2,500 rows.
+    rows = "".join(f"D00564\tD{i:05d}\tCI\n" for i in range(250))
+    fake = FakeKEGG(ddi_response=rows)
+    result = asyncio.run(
+        fake_mcp.tools["get_drug_interactions"](drug_ids="D00564", ctx=_make_ctx(fake))
+    )
+    assert len(result.interactions) == 100
+    assert result.count == 250
+    assert result.truncated is True
 
 
 def test_list_organisms_parses_three_column_rows(fake_mcp: FakeMCP) -> None:
@@ -497,20 +533,43 @@ def test_list_organisms_bounds_output_and_flags_truncation(fake_mcp: FakeMCP) ->
 
 
 def test_database_info_parses_release_and_entries(fake_mcp: FakeMCP) -> None:
+    """Live-shaped `/info/pathway` — `/info` dropped the old "Release" line entirely."""
     from kegg_mcp_server.models.organism import DatabaseInfo
 
     info_body = (
-        "kegg             Kyoto Encyclopedia of Genes and Genomes\n"
-        "kegg             Release 110.0+/04-20, Apr 26\n"
-        "                 (total: 20,501,232 entries)\n"
+        "pathway\tKEGG pathway maps\n"
+        "path\t587 entries\n"
+        "\tLast update 2026/10/15\n"
+        "\tKanehisa Laboratories\n"
+    )
+    fake = FakeKEGG(info_response=info_body)
+    result = asyncio.run(
+        fake_mcp.tools["get_database_info"](database="pathway", ctx=_make_ctx(fake))
+    )
+    assert isinstance(result, DatabaseInfo)
+    assert result.release == "2026/10/15"
+    assert result.entries == 587
+
+
+def test_database_info_without_entries_or_last_update_leaves_them_none(
+    fake_mcp: FakeMCP,
+) -> None:
+    """Live-shaped `/info/kegg` — a per-subdatabase table, no single release/count."""
+    from kegg_mcp_server.models.organism import DatabaseInfo
+
+    info_body = (
+        "kegg\tKEGG (Kyoto Encyclopedia of Genes and Genomes)\n"
+        "\tpathway        587  2026/10/15\n"
+        "\tKanehisa Laboratories\n"
     )
     fake = FakeKEGG(info_response=info_body)
     result = asyncio.run(
         fake_mcp.tools["get_database_info"](database="kegg", ctx=_make_ctx(fake))
     )
     assert isinstance(result, DatabaseInfo)
-    assert result.release is not None
-    assert result.entries == 20501232
+    assert result.release is None
+    assert result.entries is None
+    assert result.raw_info == info_body
 
 
 def test_pathway_genes_link_tool(fake_mcp: FakeMCP) -> None:
@@ -531,11 +590,10 @@ def test_kegg_api_error_from_client_becomes_error_result(fake_mcp: FakeMCP) -> N
         async def get(self, _dbentries: str, option: str | None = None) -> str:
             raise KEGGAPIError("boom", status=500, path="/get/x", retryable=True)
 
-    result = asyncio.run(
+    result = _expect_tool_error(
         fake_mcp.tools["get_pathway_info"](
             "hsa00010", detail_level="summary", ctx=_make_ctx(FailingKEGG())
         )
     )
-    assert isinstance(result, ErrorResult)
     assert result.retryable is True
     assert result.status == 500

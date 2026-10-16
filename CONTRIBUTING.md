@@ -123,3 +123,26 @@ this surfaced as a `ValidationError` on **every valid BRITE id**. Use `parse_bri
 so a server-side parse bug was reported as bad user input (that is how the BRITE defect above
 presented). Catch `pydantic.ValidationError` **first** and map it to a distinct non-retryable code.
 Input validators must keep raising plain `ValueError`.
+
+**Failures are raised, never returned.** `kegg_tool` raises `ToolError` carrying the
+`ErrorResult` JSON, so clients see `isError: true`; a returned `ErrorResult` reads as success to
+any client that classifies on `isError`. Tool return annotations name only the success model.
+
+**`/find` query encoding.** KEGG's front end rejects an encoded slash (`%2F` → 404), so the
+client turns `/` into a space; `#` and `?` are percent-encoded (HTTP clients otherwise cut them off
+as fragment/query). `+` and space both act as AND separators. A token starting with `-` is KEGG's
+*exclude* operator, so `Na+/K+-ATPase` is a 400 however it is encoded.
+
+**`/get/a+b+c` keeps request order and silently drops unknown ids.** `get_batch` maps the split
+entries back by position only when the counts match, and caches an entry per id only when its
+`ENTRY` line confirms the id (gene entries print `1956`, not `hsa:1956`).
+
+**Large BRITE bodies stream slowly.** `/get/br:hsa00001` (6.8 MB) takes ~47 s and `br:ko00001`
+(4.3 MB) ~38 s at ~145 KB/s. The client's whole-fetch deadline (120 s) must stay above that.
+
+**`/info` has no release line.** Database-style `/info/<db>` reports `<N> entries` and
+`Last update <date>`; `/info/kegg` is a per-database table and organism `/info` has neither.
+
+**Idle connections live 60 s on KEGG's side** (`Keep-Alive: timeout=60`), but httpx expires them
+after 5 s by default — so `keepalive_expiry` is set to 55 s, which saves the ~1 s TLS reconnect on
+most tool calls. KEGG serves HTTP/1.1 only and never compresses, so HTTP/2 and gzip are no-ops.

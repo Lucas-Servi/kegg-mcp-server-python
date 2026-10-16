@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.exceptions import ToolError
 
 from kegg_mcp_server.ascii.chain import render_chain
 from kegg_mcp_server.ascii.grid import render_grid
@@ -32,7 +33,7 @@ def register(mcp: MCPServer) -> None:
         max_width: int = 100,
         max_height: int = 40,
         ctx: Context = None,
-    ) -> AsciiPathway | ErrorResult:
+    ) -> AsciiPathway:
         """Render a KEGG pathway as ASCII text optimized for LLM consumption.
 
         Two styles available:
@@ -55,16 +56,18 @@ def register(mcp: MCPServer) -> None:
         kegg = ctx.request_context.lifespan_context.kegg
         kgml_xml = await kegg.get(pathway_id, option="kgml")
 
-        if not kgml_xml.strip():
-            return ErrorResult(
-                error=f"No KGML data available for pathway {pathway_id}",
-                code="kgml_not_available",
-                retryable=False,
-                hint=(
-                    "KGML is only available for organism-specific pathways "
-                    "(e.g. 'hsa00010', not 'map00010'). Try prefixing with an "
-                    "organism code like 'hsa', 'eco', or 'mmu'."
-                ),
+        if not kgml_xml or kgml_xml.isspace():
+            raise ToolError(
+                ErrorResult(
+                    error=f"No KGML data available for pathway {pathway_id}",
+                    code="kgml_not_available",
+                    retryable=False,
+                    hint=(
+                        "KGML is only available for organism-specific pathways "
+                        "(e.g. 'hsa00010', not 'map00010'). Try prefixing with an "
+                        "organism code like 'hsa', 'eco', or 'mmu'."
+                    ),
+                ).model_dump_json()
             )
 
         pathway = parse_kgml(kgml_xml)
@@ -77,7 +80,8 @@ def register(mcp: MCPServer) -> None:
             ascii_art = render_chain(pathway, max_width=max_width)
 
         # Build legend from nodes
-        for node in list(pathway.nodes.values())[:50]:
+        nodes = list(pathway.nodes.values())
+        for node in nodes[:50]:
             if node.label and node.type != "map":
                 legend.append({"label": node.label, "id": node.name, "type": node.type})
 
@@ -91,4 +95,5 @@ def register(mcp: MCPServer) -> None:
             node_count=len(pathway.nodes),
             reaction_count=len(pathway.reactions),
             relation_count=len(pathway.relations),
+            truncated=len(nodes) > 50,
         )

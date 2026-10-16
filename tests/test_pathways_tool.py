@@ -157,18 +157,23 @@ def test_get_pathway_genes_hsa_uses_hsa_target() -> None:
 
 
 def test_get_pathway_genes_map_returns_error_without_api_call() -> None:
-    """Reference pathways (map*) return ErrorResult immediately — no link API call made."""
+    """Reference pathways (map*) raise a ToolError immediately — no link API call made."""
+    import pytest
+    from mcp.server.mcpserver.exceptions import ToolError
+
     from kegg_mcp_server.models.errors import ErrorResult
 
     get_pathway_genes, _, _ = _get_link_tools()
     fake_kegg = FakeKEGG(link_response="")
 
-    result = asyncio.run(get_pathway_genes(pathway_id="map00010", ctx=_make_ctx(fake_kegg)))
+    with pytest.raises(ToolError) as exc_info:
+        asyncio.run(get_pathway_genes(pathway_id="map00010", ctx=_make_ctx(fake_kegg)))
 
+    result = ErrorResult.model_validate_json(str(exc_info.value))
     assert fake_kegg.link_calls == []
-    assert isinstance(result, ErrorResult)
     assert "map00010" in result.error
     assert result.retryable is False
+    assert result.code == "unsupported_pathway_type"
 
 
 def test_get_pathway_compounds_adds_path_prefix() -> None:

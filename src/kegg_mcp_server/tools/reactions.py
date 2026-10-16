@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Literal
 from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.reaction import ReactionInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
 from kegg_mcp_server.tools._common import (
@@ -41,7 +40,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def search_reactions(
         query: str, max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+    ) -> SearchResult:
         """Search KEGG reactions by keyword.
 
         Args:
@@ -59,7 +58,7 @@ def register(mcp: MCPServer) -> None:
         reaction_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> ReactionInfo | EntrySummary | ErrorResult:
+    ) -> ReactionInfo | EntrySummary:
         """Get detailed information for a KEGG reaction.
 
         Args:
@@ -69,8 +68,8 @@ def register(mcp: MCPServer) -> None:
         reaction_id = validate_reaction_id(reaction_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(reaction_id)
-        if not raw.strip():
-            return not_found_result("reaction", reaction_id)
+        if not raw or raw.isspace():
+            not_found_result("reaction", reaction_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)

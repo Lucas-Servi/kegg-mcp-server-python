@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Literal
 from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.module import ModuleInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
 from kegg_mcp_server.tools._common import (
@@ -42,7 +41,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def search_modules(
         query: str, max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+    ) -> SearchResult:
         """Search KEGG modules by keyword.
 
         Args:
@@ -60,7 +59,7 @@ def register(mcp: MCPServer) -> None:
         module_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> ModuleInfo | EntrySummary | ErrorResult:
+    ) -> ModuleInfo | EntrySummary:
         """Get detailed information for a KEGG module.
 
         Args:
@@ -70,8 +69,8 @@ def register(mcp: MCPServer) -> None:
         module_id = validate_module_id(module_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(module_id)
-        if not raw.strip():
-            return not_found_result("module", module_id)
+        if not raw or raw.isspace():
+            not_found_result("module", module_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)

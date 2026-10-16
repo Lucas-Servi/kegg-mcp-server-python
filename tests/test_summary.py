@@ -21,6 +21,13 @@ def test_summary_keeps_scalar_header_fields() -> None:
         assert summary["cls"] == parsed["cls"]
 
 
+def test_gene_summary_keeps_symbol() -> None:
+    # EntrySummary must declare `symbol`, or pydantic silently drops it.
+    parsed = parse_flat_entry((FIXTURES / "gene_entry.txt").read_text())
+    summary = EntrySummary(**summarize_flat_entry(parsed))
+    assert summary.symbol and summary.symbol.startswith("EGFR")
+
+
 def test_summary_replaces_linked_entities_with_counts() -> None:
     parsed = parse_flat_entry((FIXTURES / "gene_entry.txt").read_text())
     summary = summarize_flat_entry(parsed)

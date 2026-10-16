@@ -32,3 +32,4 @@ class DrugInteractionResult(BaseModel):
     drug_ids: list[str]
     interactions: list[DrugInteraction]
     count: int
+    truncated: bool = False

@@ -69,3 +69,37 @@ def test_render_chain_max_width_wrapping(hsa00010_pathway) -> None:
 def test_render_chain_header_contains_title(hsa00010_pathway) -> None:
     output = render_chain(hsa00010_pathway)
     assert "Glycolysis / Gluconeogenesis" in output
+
+
+def test_render_chain_reversible_reaction_continues_instead_of_bouncing_back() -> None:
+    """A reversible A<->B must render as a chain continuing past B, not A -> B -> A.
+
+    Adding a second graph edge back from product to substrate for reversible
+    reactions made a DFS walk immediately retrace it after the first step.
+    """
+    from kegg_mcp_server.ascii.kgml import KGMLNode, KGMLPathway, KGMLReaction
+
+    pathway = KGMLPathway(
+        name="test",
+        org="hsa",
+        number="00010",
+        title="Reversible chain test",
+        nodes={
+            1: KGMLNode(id=1, name="cpd:A", type="compound", label="A"),
+            2: KGMLNode(id=2, name="cpd:B", type="compound", label="B"),
+            3: KGMLNode(id=3, name="cpd:C", type="compound", label="C"),
+        },
+        reactions=[
+            KGMLReaction(
+                id=1, name="rn:R00001", type="reversible", substrate_ids=[1], product_ids=[2]
+            ),
+            KGMLReaction(
+                id=2, name="rn:R00002", type="irreversible", substrate_ids=[2], product_ids=[3]
+            ),
+        ],
+    )
+    output = render_chain(pathway)
+    # The chain must reach C — if the reversible edge bounced back to A, it
+    # would never continue on to the second reaction.
+    assert "[C]" in output
+    assert output.count("[A]") == 1

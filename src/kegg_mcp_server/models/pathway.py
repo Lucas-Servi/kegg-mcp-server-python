@@ -27,3 +27,5 @@ class PathwayLinks(BaseModel):
     linked_db: str
     pairs: list[tuple[str, str]]
     count: int
+    #: Set when `pairs` is a bounded subset of `count` (see MAX_ENTRIES_CAP).
+    truncated: bool = False

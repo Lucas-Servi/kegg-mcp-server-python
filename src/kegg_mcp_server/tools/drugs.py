@@ -6,7 +6,6 @@ from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
 from kegg_mcp_server.models.drug import DrugInfo, DrugInteraction, DrugInteractionResult
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import (
     parse_ddi_response,
     parse_flat_entry,
@@ -16,6 +15,7 @@ from kegg_mcp_server.parsers import (
 from kegg_mcp_server.tools._common import (
     READ_ONLY,
     build_search_result,
+    cap_list,
     kegg_tool,
     not_found_result,
 )
@@ -49,8 +49,11 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def search_drugs(
-        query: str, search_type: str = "name", max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+        query: str,
+        search_type: Literal["name", "formula", "exact_mass", "mol_weight"] = "name",
+        max_results: int = 25,
+        ctx: Context = None,
+    ) -> SearchResult:
         """Search KEGG drugs by name, formula, or molecular weight.
 
         Args:
@@ -70,7 +73,7 @@ def register(mcp: MCPServer) -> None:
         drug_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> DrugInfo | EntrySummary | ErrorResult:
+    ) -> DrugInfo | EntrySummary:
         """Get detailed information for a KEGG drug entry.
 
         Args:
@@ -80,8 +83,8 @@ def register(mcp: MCPServer) -> None:
         drug_id = validate_drug_id(drug_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(drug_id)
-        if not raw.strip():
-            return not_found_result("drug", drug_id)
+        if not raw or raw.isspace():
+            not_found_result("drug", drug_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)
@@ -90,22 +93,27 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool(annotations=READ_ONLY)
     @kegg_tool
     async def get_drug_interactions(
-        drug_ids: str, ctx: Context = None
-    ) -> DrugInteractionResult | ErrorResult:
+        drug_ids: str, max_results: int = 100, ctx: Context = None
+    ) -> DrugInteractionResult:
         """Get drug-drug interactions for one or more KEGG drugs.
 
         Args:
             drug_ids: Single drug ID (e.g. 'D00001') or multiple IDs joined with '+'
                 (e.g. 'D00001+D00564'). Max 10 entries.
+            max_results: Maximum number of interactions to return (capped at 100).
         """
-        for did in drug_ids.split("+"):
-            validate_drug_id(did.strip())
+        cleaned = [validate_drug_id(did) for did in drug_ids.split("+")]
+        if len(cleaned) > 10:
+            raise ValueError(f"Maximum 10 drug IDs per request, got {len(cleaned)}")
         kegg = ctx.request_context.lifespan_context.kegg
-        raw = await kegg.ddi(drug_ids)
+        # Send and echo the cleaned ids — the original string with stray
+        # whitespace around a '+' (e.g. 'D00109 + D00564') is a 400.
+        raw = await kegg.ddi("+".join(cleaned))
+        limited, total, truncated = cap_list(parse_ddi_response(raw), max_results)
         interactions = [
             DrugInteraction(drug1=d["drug1"], drug2=d["drug2"], interaction=d["interaction"])
-            for d in parse_ddi_response(raw)
+            for d in limited
         ]
         return DrugInteractionResult(
-            drug_ids=drug_ids.split("+"), interactions=interactions, count=len(interactions)
+            drug_ids=cleaned, interactions=interactions, count=total, truncated=truncated
         )

@@ -164,10 +164,16 @@ def validate_brite_id(brite_id: str) -> str:
     return validate_identifier(brite_id, BRITE_ID, "BRITE ID")
 
 
-#: The two BRITE hierarchy families. `/list/brite` is 97 `br#####` + 59 `ko#####`,
-#: and the 156 ids have 156 distinct digit suffixes — so a bare `08303` resolves
-#: to exactly one family, we just cannot tell WHICH one without asking KEGG.
+#: The two generic BRITE hierarchy families. `/list/brite` is 97 `br#####` +
+#: 59 `ko#####`, and the 156 ids have 156 distinct digit suffixes — so a bare
+#: `08303` resolves to exactly one family, we just cannot tell WHICH one
+#: without asking KEGG.
 _BRITE_FAMILIES = ("br", "ko")
+
+#: An id already carrying its own family/organism prefix (`br08303`,
+#: `ko00001`, `hsa00001`, ...) — only needs `br:` prepended, not a second
+#: family guessed on top of it.
+_BRITE_PREFIX_RE = re.compile(r"^[a-z]+(?=\d)")
 
 
 def brite_get_candidates(brite_id: str) -> list[str]:
@@ -181,16 +187,18 @@ def brite_get_candidates(brite_id: str) -> list[str]:
     for `ko00001`. So the ids produced by `search_brite` used to 404 as
     "not_found" — a real entry reported as nonexistent.
 
-    A bare digit id is unambiguous but not locally decidable, so both families are
-    returned in order. A 404 costs one cached empty response, so trying the second
-    is cheap.
+    An organism-prefixed id like `hsa00001` already carries its own prefix —
+    `br:hsa00001` is 200 — so guessing `br`/`ko` on top of it (`br:brhsa00001`)
+    is wrong; strip a leading `br:` first so `br:08303` (bare digits, still
+    ambiguous) is re-expanded rather than returned as-is (404).
+
+    A genuinely bare digit id is unambiguous but not locally decidable, so both
+    families are returned in order. A 404 costs one cached empty response, so
+    trying the second is cheap.
     """
-    value = brite_id.strip()
-    if value.startswith("br:"):
-        return [value]
-    for family in _BRITE_FAMILIES:
-        if value.startswith(family):
-            return [f"br:{value}"]
+    value = brite_id.strip().removeprefix("br:")
+    if _BRITE_PREFIX_RE.match(value):
+        return [f"br:{value}"]
     return [f"br:{family}{value}" for family in _BRITE_FAMILIES]
 
 

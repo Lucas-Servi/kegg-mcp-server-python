@@ -79,3 +79,42 @@ def test_clear_empties_cache() -> None:
     cache.clear()
     assert len(cache) == 0
     assert cache.get("/info/kegg") is None
+
+
+def test_bounded_by_bytes_not_entry_count() -> None:
+    cache = TTLCache(maxsize=10)
+    cache.set("/get/a", "01234567890")  # 11 bytes, already over budget alone
+    assert cache.get("/get/a") is None
+    cache.set("/get/b", "12345")
+    cache.set("/get/c", "67890")
+    assert cache.get("/get/b") == "12345"
+    assert cache.get("/get/c") == "67890"
+
+
+def test_oversize_value_is_skipped_not_raised() -> None:
+    cache = TTLCache(maxsize=10)
+    cache.set("/get/huge", "x" * 100)  # must not raise
+    assert cache.get("/get/huge") is None
+
+
+def test_entry_ops_get_six_hour_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
+    current = [1000.0]
+
+    def fake_monotonic() -> float:
+        return current[0]
+
+    monkeypatch.setattr(time, "monotonic", fake_monotonic)
+    cache = TTLCache()
+    for op, path in (
+        ("get", "/get/hsa00010"),
+        ("find", "/find/pathway/x"),
+        ("conv", "/conv/uniprot/hsa"),
+        ("link", "/link/pathway/hsa"),
+        ("ddi", "/ddi/D00001"),
+    ):
+        cache.set(path, "v")
+        current[0] += _TTL_BY_OP[op] - 1
+        assert cache.get(path) == "v", op
+        current[0] += 2
+        assert cache.get(path) is None, op
+        current[0] = 1000.0

@@ -8,6 +8,7 @@ from kegg_mcp_server.models.common import Reference
 class GeneInfo(BaseModel):
     entry: str
     name: str | list[str]
+    symbol: str | None = None
     definition: str | None = None
     orthology: dict[str, str] | None = None
     organism: str | None = None

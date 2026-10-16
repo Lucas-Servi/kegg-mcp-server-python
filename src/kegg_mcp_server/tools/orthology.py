@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Literal
 from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.common import EntrySummary, Reference, SearchResult
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.models.orthology import KOInfo
 from kegg_mcp_server.parsers import parse_flat_entry, parse_tab_list, summarize_flat_entry
 from kegg_mcp_server.tools._common import (
     READ_ONLY,
     build_search_result,
+    cap_mapping,
     kegg_tool,
     not_found_result,
 )
@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 
 
 def _build(p: dict) -> KOInfo:
+    # K00844's GENES section is ~1,400 organism rows live — cap it like every
+    # other list/mapping output.
+    genes, _, genes_truncated = cap_mapping(p.get("genes") or {})
     return KOInfo(
         entry=p.get("entry", ""),
         name=p.get("name", ""),
@@ -30,7 +33,8 @@ def _build(p: dict) -> KOInfo:
         disease=p.get("disease"),
         network=p.get("network"),
         brite=p.get("brite"),
-        genes=p.get("gene"),
+        genes=genes or None,
+        genes_truncated=genes_truncated,
         dblinks=p.get("dblinks"),
         references=[Reference(**r) for r in p.get("references", [])],
     )
@@ -42,7 +46,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def search_ko_entries(
         query: str, max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+    ) -> SearchResult:
         """Search KEGG Orthology (KO) entries by keyword.
 
         Args:
@@ -60,7 +64,7 @@ def register(mcp: MCPServer) -> None:
         ko_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> KOInfo | EntrySummary | ErrorResult:
+    ) -> KOInfo | EntrySummary:
         """Get detailed information for a KEGG Orthology (KO) entry.
 
         Args:
@@ -70,8 +74,8 @@ def register(mcp: MCPServer) -> None:
         ko_id = validate_ko_id(ko_id)
         kegg = ctx.request_context.lifespan_context.kegg
         raw = await kegg.get(ko_id)
-        if not raw.strip():
-            return not_found_result("KO entry", ko_id)
+        if not raw or raw.isspace():
+            not_found_result("KO entry", ko_id)
         parsed = parse_flat_entry(raw)
         if detail_level == "full":
             return _build(parsed)

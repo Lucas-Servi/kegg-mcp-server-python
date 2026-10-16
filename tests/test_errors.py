@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import defusedxml.ElementTree as ET
+import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel
 
 from kegg_mcp_server.errors import KEGGAPIError
@@ -17,13 +20,20 @@ async def test_kegg_tool_passes_through_success() -> None:
     assert await ok() == "fine"
 
 
+async def _expect_tool_error(coro) -> ErrorResult:
+    """Every failure path now raises `ToolError` (-> `is_error=True`) instead
+    of returning an `ErrorResult` normally."""
+    with pytest.raises(ToolError) as exc_info:
+        await coro
+    return ErrorResult.model_validate_json(str(exc_info.value))
+
+
 async def test_kegg_tool_converts_retryable_error_to_error_result() -> None:
     @kegg_tool
     async def fail() -> str:
         raise KEGGAPIError("boom", status=503, path="/get/x", retryable=True)
 
-    result = await fail()
-    assert isinstance(result, ErrorResult)
+    result = await _expect_tool_error(fail())
     assert result.status == 503
     assert result.path == "/get/x"
     assert result.retryable is True
@@ -35,8 +45,7 @@ async def test_kegg_tool_converts_non_retryable_error_to_error_result() -> None:
     async def fail() -> str:
         raise KEGGAPIError("nope", status=400, path="/get/x", retryable=False)
 
-    result = await fail()
-    assert isinstance(result, ErrorResult)
+    result = await _expect_tool_error(fail())
     assert result.retryable is False
     assert result.status == 400
     assert "check the identifier" in (result.hint or "").lower()
@@ -47,8 +56,7 @@ async def test_kegg_tool_converts_value_error_to_error_result() -> None:
     async def fail() -> str:
         raise ValueError("something else")
 
-    result = await fail()
-    assert isinstance(result, ErrorResult)
+    result = await _expect_tool_error(fail())
     assert result.code == "validation_error"
     assert "something else" in result.error
     assert result.retryable is False
@@ -71,8 +79,7 @@ async def test_kegg_tool_reports_a_model_build_failure_as_a_parse_error() -> Non
     async def fail() -> Strict:
         return Strict()  # missing required field → ValidationError
 
-    result = await fail()
-    assert isinstance(result, ErrorResult)
+    result = await _expect_tool_error(fail())
     assert result.code == "parse_error"
     assert result.retryable is False
     assert "fail" in result.error
@@ -92,9 +99,24 @@ async def test_kegg_tool_still_maps_plain_value_error_to_validation_error() -> N
     async def fail() -> str:
         raise ValueError("Invalid pathway ID: 'xyz'")
 
-    result = await fail()
+    result = await _expect_tool_error(fail())
     assert result.code == "validation_error"
     assert "check the identifier format" in (result.hint or "").lower()
+
+
+async def test_kegg_tool_reports_malformed_kgml_as_parse_error_not_validation() -> None:
+    """A bad numeric KGML attribute is this server's problem, not the caller's
+    identifier — it must not land in the "check the identifier" bucket, even
+    though parsing it raises `ValueError` under the hood (see `ascii/kgml.py`)."""
+
+    @kegg_tool
+    async def fail() -> str:
+        raise ET.ParseError("Malformed KGML: invalid literal for int() ...")
+
+    result = await _expect_tool_error(fail())
+    assert result.code == "parse_error"
+    assert result.retryable is False
+    assert "check the identifier" not in (result.hint or "").lower()
 
 
 def test_error_result_has_stable_code_default() -> None:

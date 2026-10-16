@@ -46,9 +46,15 @@ def parse_link_response(text: str) -> list[tuple[str, str]]:
     return pairs
 
 
-def parse_conv_response(text: str) -> dict[str, str]:
-    """Parse /conv response into {source_id: target_id}."""
-    return dict(parse_link_response(text))
+def parse_conv_response(text: str) -> dict[str, list[str]]:
+    """Parse /conv response into {source_id: [target_id, ...]}.
+
+    conv is one-to-many: `/conv/uniprot/hsa:1956` returns three up: targets.
+    """
+    mappings: dict[str, list[str]] = {}
+    for source, target in parse_link_response(text):
+        mappings.setdefault(source, []).append(target)
+    return mappings
 
 
 def parse_ddi_response(text: str) -> list[dict[str, str]]:
@@ -92,6 +98,7 @@ _MAP_SECTIONS = frozenset(
         "DISEASE",
         "DRUG",
         "GENE",
+        "GENES",
         "COMPOUND",
         "REACTION",
         "ENZYME",
@@ -173,6 +180,7 @@ _SUMMARY_SCALAR_FIELDS = (
     "entry",
     "entry_type",
     "name",
+    "symbol",
     "cls",
     "definition",
     "description",
@@ -369,6 +377,22 @@ def _is_kegg_id(token: str) -> bool:
     return bool(_KEGG_ID_RE.match(token))
 
 
+def _map_line_key(line: str) -> tuple[str, str]:
+    """(key, value) for a map line, skipping leading "(...)" qualifiers.
+
+    Disease H00020 has several "(HNPCC) <gene> ..." lines; keying on "(HNPCC)" kept only one.
+    """
+    tokens = line.split()
+    if not tokens:
+        return line, ""
+    key_idx = 0
+    while key_idx < len(tokens) - 1 and tokens[key_idx].startswith("("):
+        key_idx += 1
+    key = tokens[key_idx]
+    value = " ".join(tokens[:key_idx] + tokens[key_idx + 1 :])
+    return key, value
+
+
 def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> None:
     if not lines:
         return
@@ -408,11 +432,8 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
                 for token in all_tokens:
                     mapping[token] = ""
             else:
-                parts = line.split(None, 1)
-                if len(parts) == 2:
-                    mapping[parts[0]] = parts[1]
-                elif parts:
-                    mapping[parts[0]] = ""
+                key, value = _map_line_key(line)
+                mapping[key] = value
         result[section.lower()] = mapping
 
     elif section_upper in _TEXT_SECTIONS:
@@ -429,6 +450,13 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
             result[section.lower()] = float(lines[0])
         except ValueError:
             result[section.lower()] = lines[0]
+
+    elif section_upper == "MASS":
+        # Glycans: "203.2 (PP-Dol)" — only the leading number is the mass.
+        try:
+            result["mass"] = float(lines[0].split()[0])
+        except (ValueError, IndexError):
+            result["mass"] = None
 
     elif section_upper == "FORMULA":
         result["formula"] = lines[0] if lines else ""
@@ -459,25 +487,33 @@ def _flush_section(result: dict[str, Any], section: str, lines: list[str]) -> No
 
 
 def _parse_references(lines: list[str]) -> list[dict[str, str]]:
-    """Parse lines within a REFERENCE section.
+    """Parse lines within one REFERENCE section (one `/get` entry has several).
 
-    Lines may include sub-field labels (AUTHORS, TITLE, JOURNAL) from the
-    sub-section parsing, plus optional PMID identifiers.
+    Lines carry sub-field labels (AUTHORS, TITLE, JOURNAL, SEQUENCE); a
+    JOURNAL can continue onto an unlabeled "DOI:..." line. The first line is
+    usually "PMID:12345" but some references have no PMID at all, in which
+    case it's a free-text ref id — either way it must not be mistaken for a
+    DOI/SEQUENCE continuation line that happens to come later.
     """
     refs: list[dict[str, str]] = []
     current: dict[str, str] = {}
 
     for line in lines:
-        if "PMID:" in line:
-            current["pmid"] = line.split("PMID:")[1].strip().rstrip(")")
-        elif line.startswith("AUTHORS"):
+        if line.startswith("AUTHORS"):
             current["authors"] = line[len("AUTHORS") :].strip()
         elif line.startswith("TITLE"):
             current["title"] = line[len("TITLE") :].strip()
         elif line.startswith("JOURNAL"):
             current["journal"] = line[len("JOURNAL") :].strip()
-        elif line.strip():
-            current.setdefault("ref_id", line.strip())
+        elif line.startswith("SEQUENCE"):
+            current["sequence"] = line[len("SEQUENCE") :].strip()
+        elif line.startswith("DOI:"):
+            # Continuation of JOURNAL, not its own field label.
+            current["journal"] = f"{current.get('journal', '')} {line.strip()}".strip()
+        elif "PMID:" in line and "pmid" not in current:
+            current["pmid"] = line.split("PMID:")[1].strip().rstrip(")")
+        elif line.strip() and "pmid" not in current and "ref_id" not in current:
+            current["ref_id"] = line.strip()
 
     if current:
         refs.append(current)

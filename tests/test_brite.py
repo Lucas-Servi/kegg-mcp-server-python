@@ -26,6 +26,7 @@ import json
 from pathlib import Path
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 from kegg_mcp_server.models.brite import BriteHierarchy
 from kegg_mcp_server.models.errors import ErrorResult
@@ -92,6 +93,13 @@ def _call_recording(fake_mcp: FakeMCP, brite_id: str, *, serves: str, raw: str):
         fake_mcp.tools["get_brite_info"](brite_id, ctx=_make_ctx(fake))
     )
     return result, fake.requested
+
+
+def _call_recording_expect_error(fake_mcp: FakeMCP, brite_id: str, *, serves: str, raw: str):
+    fake = RecordingKEGG(serves=serves, get_response=raw)
+    with pytest.raises(ToolError) as exc_info:
+        asyncio.run(fake_mcp.tools["get_brite_info"](brite_id, ctx=_make_ctx(fake)))
+    return ErrorResult.model_validate_json(str(exc_info.value)), fake.requested
 
 
 # ── Parser ──────────────────────────────────────────────────────────────────
@@ -225,15 +233,17 @@ class TestGetBriteInfo:
 
     def test_empty_response_is_still_not_found(self, fake_mcp: FakeMCP):
         """The empty-response branch precedes parsing, so it is unaffected."""
-        result = _call(fake_mcp, "")
-        assert isinstance(result, ErrorResult)
+        with pytest.raises(ToolError) as exc_info:
+            _call(fake_mcp, "")
+        result = ErrorResult.model_validate_json(str(exc_info.value))
         assert result.code == "not_found"
         assert result.status == 404
 
     def test_invalid_id_is_still_a_validation_error(self, fake_mcp: FakeMCP):
         """`ValueError` must keep meaning 'bad input' after the _common split."""
-        result = _call(fake_mcp, _hierarchy_text(), brite_id="not-a-brite-id")
-        assert isinstance(result, ErrorResult)
+        with pytest.raises(ToolError) as exc_info:
+            _call(fake_mcp, _hierarchy_text(), brite_id="not-a-brite-id")
+        result = ErrorResult.model_validate_json(str(exc_info.value))
         assert result.code == "validation_error"
 
     def test_result_is_json_serializable(self, fake_mcp: FakeMCP):
@@ -260,6 +270,9 @@ class TestBriteGetCandidates:
             ("br08303", ["br:br08303"]),
             ("08303", ["br:br08303", "br:ko08303"]),  # as /find/brite emits it
             ("00001", ["br:br00001", "br:ko00001"]),
+            ("hsa00001", ["br:hsa00001"]),            # organism-prefixed, not br/ko
+            ("br:hsa00001", ["br:hsa00001"]),
+            ("br:08303", ["br:br08303", "br:ko08303"]),  # bare digits even with 'br:'
         ],
     )
     def test_candidate_urls(self, given: str, expected: list[str]):
@@ -279,13 +292,14 @@ class TestBriteGetCandidates:
         assert requested == ["br:ko00001"]
 
     def test_bare_search_style_id_resolves_via_fallback(self, fake_mcp: FakeMCP):
-        """`08303` from search_brite: `br` is tried first and wins."""
+        """`08303` from search_brite: both families are fetched concurrently,
+        and `br` wins preference order even though `ko` also comes back."""
         result, requested = _call_recording(
             fake_mcp, "08303", serves="br:br08303", raw=_atc_text()
         )
         assert isinstance(result, BriteHierarchy), result
         assert result.entry == "br:br08303"
-        assert requested == ["br:br08303"]
+        assert requested == ["br:br08303", "br:ko08303"]
 
     def test_bare_id_falls_through_to_the_ko_family(self, fake_mcp: FakeMCP):
         """`00001` is `ko00001`, so the `br` candidate must 404 first."""
@@ -298,10 +312,9 @@ class TestBriteGetCandidates:
 
     def test_a_genuinely_absent_id_is_still_not_found(self, fake_mcp: FakeMCP):
         """Both families exhausted → not_found, not a silent empty hierarchy."""
-        result, requested = _call_recording(
+        result, requested = _call_recording_expect_error(
             fake_mcp, "99999", serves="nothing", raw=_hierarchy_text()
         )
-        assert isinstance(result, ErrorResult)
         assert result.code == "not_found"
         assert requested == ["br:br99999", "br:ko99999"]
 

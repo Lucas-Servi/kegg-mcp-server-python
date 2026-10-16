@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from mcp.server.mcpserver.exceptions import ResourceNotFoundError
 
 from kegg_mcp_server.prompts import register_prompts
 from kegg_mcp_server.resources import register_resources
@@ -110,6 +111,39 @@ def test_entry_resources_return_json_parse_of_get(
     assert parsed["entry"] == "X00001"
 
 
+def test_entry_resource_raises_not_found_on_empty_response(mcp: _FakeMCP) -> None:
+    """Was: `'{}'` on a 404, which looks like a valid empty entry."""
+    fake = FakeKEGG(get_response="")
+    func = mcp.resources["kegg://gene/{gene_id}"]
+    with pytest.raises(ResourceNotFoundError):
+        asyncio.run(func("hsa:1956", ctx=_ctx(fake)))
+
+
+def test_entry_resource_validates_the_identifier(mcp: _FakeMCP) -> None:
+    """A path-traversal/injection id must be rejected before it reaches the client,
+    not percent-decoded straight into the `/get` path."""
+    fake = FakeKEGG(get_response="ENTRY       X00001            Type\n///\n")
+    func = mcp.resources["kegg://gene/{gene_id}"]
+    with pytest.raises(ValueError):
+        asyncio.run(func("hsa:1956/aaseq", ctx=_ctx(fake)))
+    assert fake.calls == []
+
+
+def test_entry_resource_output_is_capped_and_compact(mcp: _FakeMCP) -> None:
+    """Every dict field is bounded, and the JSON isn't pretty-printed."""
+    from kegg_mcp_server.tools._common import MAX_ENTRIES_CAP
+
+    pathway_lines = "\n".join(f"            hsa{i:05d}  Pathway {i}" for i in range(150))
+    raw = f"ENTRY       X00001            Type\nPATHWAY{pathway_lines[7:]}\n///\n"
+    fake = FakeKEGG(get_response=raw)
+    func = mcp.resources["kegg://pathway/{pathway_id}"]
+    out = asyncio.run(func("hsa00010", ctx=_ctx(fake)))
+    assert "\n" not in out  # compact, not indent=2
+    parsed = json.loads(out)
+    assert len(parsed["pathway"]) == MAX_ENTRIES_CAP
+    assert parsed["pathway_truncated"] is True
+
+
 def test_organism_resource_uses_list(mcp: _FakeMCP) -> None:
     fake = FakeKEGG(list_response="bsu00010\tGlycolysis - B. subtilis\n")
     out = asyncio.run(
@@ -145,6 +179,19 @@ def test_drug_prompt_names_the_drug(mcp: _FakeMCP) -> None:
     text = mcp.prompts["drug_target_investigation"](drug_name="imatinib")
     assert "imatinib" in text
     assert "search_drugs" in text
+
+
+def test_visualize_pathway_prompt_does_not_double_prefix_a_map_id(mcp: _FakeMCP) -> None:
+    """`pathway_id='map00010'` + default organism='hsa' must stay 'map00010',
+    not become the nonsensical 'hsamap00010'."""
+    text = mcp.prompts["visualize_pathway"](pathway_id="map00010")
+    assert "map00010" in text
+    assert "hsamap00010" not in text
+
+
+def test_visualize_pathway_prompt_prefixes_a_bare_number(mcp: _FakeMCP) -> None:
+    text = mcp.prompts["visualize_pathway"](pathway_id="00010", organism="eco")
+    assert "eco00010" in text
 
 
 def test_metabolic_comparison_prompt_expands_organisms(mcp: _FakeMCP) -> None:

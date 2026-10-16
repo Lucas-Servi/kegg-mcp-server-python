@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Literal
 
 from mcp.server.mcpserver import Context
 
 from kegg_mcp_server.models.brite import BriteHierarchy
 from kegg_mcp_server.models.common import SearchResult
-from kegg_mcp_server.models.errors import ErrorResult
 from kegg_mcp_server.parsers import parse_brite_hierarchy, parse_tab_list
 from kegg_mcp_server.tools._common import (
     READ_ONLY,
@@ -40,7 +40,7 @@ def register(mcp: MCPServer) -> None:
     @kegg_tool
     async def search_brite(
         query: str, max_results: int = 25, ctx: Context = None
-    ) -> SearchResult | ErrorResult:
+    ) -> SearchResult:
         """Search KEGG BRITE functional hierarchy databases.
 
         Args:
@@ -58,7 +58,7 @@ def register(mcp: MCPServer) -> None:
         brite_id: str,
         detail_level: Literal["summary", "full"] = "summary",
         ctx: Context = None,
-    ) -> BriteHierarchy | ErrorResult:
+    ) -> BriteHierarchy:
         """Get the structure of a KEGG BRITE functional hierarchy.
 
         BRITE entries are large A/B/C/D trees, not flat-file entries, so the
@@ -79,18 +79,26 @@ def register(mcp: MCPServer) -> None:
 
         # `/get` needs the `br:` prefix, which neither `/list/brite` nor
         # `/find/brite` puts on the ids they hand the caller. A bare digit id is
-        # unambiguous but not locally decidable, so try each family in turn.
+        # unambiguous but not locally decidable, so fetch both families at once
+        # and keep the first non-empty one in preference order (a 404 is cheap —
+        # it's the sequential round trip that isn't).
         candidates = brite_get_candidates(brite_id)
+        responses = await asyncio.gather(
+            *(kegg.get(c) for c in candidates), return_exceptions=True
+        )
         raw, resolved = "", candidates[0]
-        for candidate in candidates:
-            raw = await kegg.get(candidate)
-            if raw.strip():
-                resolved = candidate
+        first_exc: BaseException | None = None
+        for candidate, response in zip(candidates, responses, strict=True):
+            if isinstance(response, BaseException):
+                first_exc = first_exc or response
+                continue
+            if response and not response.isspace():
+                raw, resolved = response, candidate
                 break
-        if not raw.strip():
-            return not_found_result(
-                "BRITE entry", brite_id, path_identifier=candidates[0]
-            )
+        if not raw or raw.isspace():
+            if first_exc is not None and all(isinstance(r, BaseException) for r in responses):
+                raise first_exc
+            not_found_result("BRITE entry", brite_id, path_identifier=candidates[0])
 
         parsed = parse_brite_hierarchy(raw)
         hierarchy = BriteHierarchy(entry=resolved, detail_level=detail_level, **parsed)

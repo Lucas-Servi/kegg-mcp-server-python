@@ -16,5 +16,8 @@ class KOInfo(BaseModel):
     # KEGG BRITE can be either a structured map or a free-text hierarchy block.
     brite: dict[str, str] | str | None = None
     genes: dict[str, str] | None = None
+    #: Set when `genes` (organism -> gene list) is a bounded subset — K00844's
+    #: GENES section is ~1,400 lines live.
+    genes_truncated: bool = False
     dblinks: dict[str, list[str]] | None = None
     references: list[Reference] | None = None

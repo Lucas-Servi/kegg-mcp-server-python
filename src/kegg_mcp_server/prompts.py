@@ -79,7 +79,10 @@ def register_prompts(mcp: MCPServer) -> None:
             pathway_id: Reference pathway number (e.g. '00010' for glycolysis).
             organism: KEGG organism code (default 'hsa' for human).
         """
-        full_id = f"{organism}{pathway_id}" if not pathway_id.startswith(organism) else pathway_id
+        # Only a bare numeric suffix needs the organism prefixed on — anything
+        # that already carries one (e.g. 'map00010') must be left alone, or
+        # 'map00010' + organism='hsa' becomes the nonsensical 'hsamap00010'.
+        full_id = f"{organism}{pathway_id}" if pathway_id.isdigit() else pathway_id
         return (
             f"Visualize KEGG pathway {full_id}:\n\n"
             f"1. Use `get_pathway_info` on '{full_id}' to understand the pathway context\n"

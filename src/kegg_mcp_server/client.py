@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import httpx
 import tenacity
@@ -29,6 +30,11 @@ _RETRIABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 _MAX_RESPONSE_BYTES = 25 * 1024 * 1024  # 25 MB
 
+# Cap the whole retried fetch. Not lower: KEGG streams /get/br:hsa00001 (6.8 MB) in ~47 s.
+_FETCH_TIMEOUT_SECONDS = 120.0
+# Don't honor a Retry-After longer than this; let the retry fail instead of stalling.
+_MAX_RETRY_AFTER_SECONDS = 10.0
+
 logger = logging.getLogger("kegg_mcp_server.client")
 
 
@@ -42,11 +48,63 @@ def _redact_path(path: str) -> str:
     return f"/{op}/sha1:{payload_hash}"
 
 
+def _encode_find_query(query: str) -> str:
+    """Percent-encode a /find query; "/" becomes a space (KEGG 404s on %2F, see CONTRIBUTING)."""
+    return quote(query.replace("/", " "), safe="+")
+
+
+def _split_flat_entries(text: str) -> list[str]:
+    """Split a multi-entry flat response on the ``///`` terminator, keeping it."""
+    entries: list[str] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        current.append(line)
+        if line.startswith("///"):
+            entries.append("\n".join(current))
+            current = []
+    if current:
+        entries.append("\n".join(current))
+    return entries
+
+
+def _entry_bare_id(entry_text: str) -> str:
+    """KEGG's bare id from an entry's ENTRY line (no db prefix, e.g. "1956" not "hsa:1956")."""
+    for line in entry_text.splitlines():
+        if line.startswith("ENTRY"):
+            parts = line.split()
+            return parts[1] if len(parts) > 1 else ""
+    return ""
+
+
+def _requested_id_matches(entry_id: str, requested: str) -> bool:
+    """Compare KEGG's bare ENTRY id to the (possibly db-prefixed) id we requested."""
+    return bool(entry_id) and entry_id in (requested, requested.rsplit(":", 1)[-1])
+
+
+def _before_sleep(retry_state: tenacity.RetryCallState) -> None:
+    """Log a retry without leaking the full URL (tenacity's own helper does)."""
+    exc = retry_state.outcome.exception() if retry_state.outcome else None
+    path = exc.request.url.path if isinstance(exc, httpx.HTTPStatusError) else "?"
+    wait = retry_state.next_action.sleep if retry_state.next_action else 0.0
+    logger.warning(
+        "kegg retry",
+        extra={
+            "path": _redact_path(path),
+            "attempt": retry_state.attempt_number,
+            "wait_s": round(wait, 2),
+        },
+    )
+
+
 def _should_retry(exc: BaseException) -> bool:
     if isinstance(exc, (httpx.TransportError, httpx.ReadTimeout, httpx.ConnectTimeout)):
         return True
     if isinstance(exc, httpx.HTTPStatusError):
-        return exc.response.status_code in _RETRIABLE_STATUSES
+        if exc.response.status_code not in _RETRIABLE_STATUSES:
+            return False
+        # A Retry-After longer than our cap: don't wait for it, fail as retryable instead.
+        retry_after = _retry_after_seconds(exc)
+        return retry_after is None or retry_after <= _MAX_RETRY_AFTER_SECONDS
     return False
 
 
@@ -133,7 +191,7 @@ class KEGGClient:
         return await self._cached_get(f"/list/{database}")
 
     async def find(self, database: str, query: str, option: str | None = None) -> str:
-        path = f"/find/{database}/{query}"
+        path = f"/find/{database}/{_encode_find_query(query)}"
         if option:
             path += f"/{option}"
         return await self._cached_get(path)
@@ -154,14 +212,44 @@ class KEGGClient:
         return await self._cached_get(f"/ddi/{dbentries}")
 
     async def get_batch(self, entry_ids: list[str], option: str | None = None) -> list[str]:
-        """Fetch multiple entries, chunking to respect KEGG's max-10-per-GET limit.
+        """Fetch multiple entries, serving per-entry cache hits and chunking only the misses.
 
         Concurrency across chunks is gated by the client semaphore and request starts
         are rate-limited, so a large batch stays within KEGG's usage policy.
         """
-        chunks = [entry_ids[i : i + _BATCH_SIZE] for i in range(0, len(entry_ids), _BATCH_SIZE)]
-        tasks = [self.get("+".join(chunk), option) for chunk in chunks]
-        return list(await asyncio.gather(*tasks))
+        ids = list(dict.fromkeys(entry_ids))  # dedupe, keep first-seen order
+        results: dict[str, str] = {}
+        misses: list[str] = []
+        for entry_id in ids:
+            cached = self._cache.get(self._get_cache_key(entry_id, option))
+            if cached is None:
+                misses.append(entry_id)
+            else:
+                results[entry_id] = cached
+
+        chunks = [misses[i : i + _BATCH_SIZE] for i in range(0, len(misses), _BATCH_SIZE)]
+        chunk_texts = await asyncio.gather(
+            *(self.get("+".join(chunk), option) for chunk in chunks)
+        )
+
+        leftover: list[str] = []
+        for chunk, text in zip(chunks, chunk_texts):
+            split = _split_flat_entries(text)
+            if len(split) != len(chunk):
+                # Can't map entries to ids with certainty (e.g. a dropped/obsolete
+                # id) — keep the combined response as one blob instead of guessing.
+                leftover.append(text)
+                continue
+            for entry_id, entry_text in zip(chunk, split):
+                results[entry_id] = entry_text
+                if _requested_id_matches(_entry_bare_id(entry_text), entry_id):
+                    self._cache.set(self._get_cache_key(entry_id, option), entry_text)
+
+        return [results[entry_id] for entry_id in ids if entry_id in results] + leftover
+
+    @staticmethod
+    def _get_cache_key(entry_id: str, option: str | None) -> str:
+        return f"/get/{entry_id}/{option}" if option else f"/get/{entry_id}"
 
     async def _cached_get(self, path: str) -> str:
         cached = self._cache.get(path)
@@ -169,12 +257,19 @@ class KEGGClient:
             logger.debug("kegg cache hit", extra={"path": path, "cache_hit": True})
             return cached
         try:
-            text = await self._fetch(path)
+            async with asyncio.timeout(_FETCH_TIMEOUT_SECONDS):
+                text = await self._fetch(path)
+        except TimeoutError as exc:
+            raise KEGGAPIError(
+                f"KEGG request timed out after {_FETCH_TIMEOUT_SECONDS}s",
+                path=path,
+                retryable=True,
+            ) from exc
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
                 logger.info(
                     "kegg not found",
-                    extra={"path": path, "status": 404, "cache_hit": False},
+                    extra={"path": _redact_path(path), "status": 404, "cache_hit": False},
                 )
                 self._cache.set(path, "")
                 return ""
@@ -184,11 +279,11 @@ class KEGGClient:
                 path=path,
                 retryable=exc.response.status_code in _RETRIABLE_STATUSES,
             ) from exc
-        except httpx.TransportError as exc:
+        except (httpx.HTTPError, httpx.InvalidURL) as exc:
             raise KEGGAPIError(
                 f"KEGG API network error: {exc.__class__.__name__}",
                 path=path,
-                retryable=True,
+                retryable=isinstance(exc, httpx.TransportError),
             ) from exc
         self._cache.set(path, text)
         return text
@@ -197,12 +292,14 @@ class KEGGClient:
         retry=tenacity.retry_if_exception(_should_retry),
         wait=_wait_for_retry,
         stop=tenacity.stop_after_attempt(3),
-        before_sleep=tenacity.before_sleep_log(logger, logging.WARNING),
+        before_sleep=_before_sleep,
         reraise=True,
     )
     async def _fetch(self, path: str) -> str:
-        await self._rate_limiter.wait()
+        # Wait on the limiter *inside* the semaphore, else tasks queued at the
+        # semaphore all pass the limiter back-to-back and burst past 3 req/s.
         async with self._semaphore:
+            await self._rate_limiter.wait()
             start = time.perf_counter()
             resp = await self._http.get(path)
             duration_ms = round((time.perf_counter() - start) * 1000, 1)
@@ -220,14 +317,19 @@ class KEGGClient:
                 )
                 raise
             content_length = resp.headers.get("content-length")
-            if content_length and int(content_length) > _MAX_RESPONSE_BYTES:
-                raise KEGGAPIError(
-                    f"Response too large ({content_length} bytes, limit {_MAX_RESPONSE_BYTES})",
-                    path=path,
-                    retryable=False,
-                )
-            text = resp.text
-            if len(text.encode("utf-8")) > _MAX_RESPONSE_BYTES:
+            if content_length is not None:
+                try:
+                    too_large = int(content_length) > _MAX_RESPONSE_BYTES
+                except ValueError:
+                    too_large = False  # malformed header, fall through to the body check
+                if too_large:
+                    raise KEGGAPIError(
+                        f"Response too large ({content_length} bytes, "
+                        f"limit {_MAX_RESPONSE_BYTES})",
+                        path=path,
+                        retryable=False,
+                    )
+            if len(resp.content) > _MAX_RESPONSE_BYTES:
                 raise KEGGAPIError(
                     f"Response body exceeds {_MAX_RESPONSE_BYTES} byte limit",
                     path=path,
@@ -242,4 +344,4 @@ class KEGGClient:
                     "cache_hit": False,
                 },
             )
-            return text
+            return resp.text

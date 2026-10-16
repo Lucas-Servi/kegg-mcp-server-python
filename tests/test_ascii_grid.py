@@ -65,3 +65,28 @@ def test_render_grid_respects_height(hsa00010_pathway) -> None:
 def test_render_grid_empty_falls_back_to_chain(empty_pathway) -> None:
     output = render_grid(empty_pathway)
     assert "No spatial coordinates" in output or "falling back to chain mode" in output
+
+
+def test_render_grid_draws_an_arrowhead_not_just_a_line() -> None:
+    """The arrowhead used to land on the destination box's own anchor cell
+    (already occupied by its label text), so `grid[dy][end_x] == " "` was
+    always False and no arrowhead glyph was ever drawn."""
+    from kegg_mcp_server.ascii.kgml import KGMLNode, KGMLPathway, KGMLReaction
+
+    pathway = KGMLPathway(
+        name="test",
+        org="hsa",
+        number="00010",
+        title="Arrowhead test",
+        nodes={
+            1: KGMLNode(id=1, name="cpd:A", type="compound", label="A", x=10, y=10),
+            2: KGMLNode(id=2, name="cpd:B", type="compound", label="B", x=80, y=10),
+        },
+        reactions=[
+            KGMLReaction(
+                id=1, name="rn:R00001", type="irreversible", substrate_ids=[1], product_ids=[2]
+            )
+        ],
+    )
+    output = render_grid(pathway, width=100, height=20)
+    assert any(ch in output for ch in "▶◀▼▲")

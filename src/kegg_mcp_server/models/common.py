@@ -8,6 +8,7 @@ class Reference(BaseModel):
     authors: str | None = None
     title: str | None = None
     journal: str | None = None
+    sequence: str | None = None
     ref_id: str | None = None
 
 
@@ -32,6 +33,7 @@ class EntrySummary(BaseModel):
     entry: str
     entry_type: str | None = None
     name: str | list[str] = ""
+    symbol: str | None = None
     cls: str | None = None
     definition: str | None = None
     description: str | None = None
@@ -56,7 +58,8 @@ class ListResult(BaseModel):
 class ConversionResult(BaseModel):
     source_db: str
     target_db: str
-    mappings: dict[str, str]
+    #: conv is one-to-many (e.g. one gene -> several UniProt accessions).
+    mappings: dict[str, list[str]]
     count: int
 
 
@@ -65,6 +68,8 @@ class LinkResult(BaseModel):
     target_db: str
     pairs: list[tuple[str, str]]
     count: int
+    #: Set when `pairs` is a bounded subset of `count` (see MAX_ENTRIES_CAP).
+    truncated: bool = False
 
 
 class BatchLookupResult(BaseModel):

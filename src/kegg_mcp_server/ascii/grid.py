@@ -136,6 +136,22 @@ def _find_free_spot(
     return row, col
 
 
+def _arrow_cell(line: list[str], dst: int, step: int, glyph: str) -> None:
+    """Replace the line cell closest to `dst` with an arrowhead glyph.
+
+    `dst`'s own cell already holds the destination box's label text (its
+    anchor is the box's middle character), so placing the arrowhead there was
+    always a no-op — the glyph never showed up. The box's width varies with
+    the label, so instead of guessing an offset, walk back from `dst` until
+    the line character we actually drew is found and replace that one.
+    """
+    x = dst - step
+    while 0 <= x < len(line) and line[x] not in ("─", "│"):
+        x -= step
+    if 0 <= x < len(line):
+        line[x] = glyph
+
+
 def _draw_edge(
     grid: list[list[str]],
     src: tuple[int, int],
@@ -154,16 +170,18 @@ def _draw_edge(
         for x in range(start_x + 1, end_x):
             if 0 <= x < width and grid[sy][x] == " ":
                 grid[sy][x] = "─"
-        if 0 <= end_x < width and grid[dy][end_x] == " ":
-            grid[dy][end_x] = "▶" if dx > sx else "◀"
+        _arrow_cell(grid[sy], dx, 1 if dx > sx else -1, "▶" if dx > sx else "◀")
     elif sx == dx:
         # Vertical line
         start_y, end_y = min(sy, dy), max(sy, dy)
         for y in range(start_y + 1, end_y):
             if 0 <= y < height and grid[y][sx] == " ":
                 grid[y][sx] = "│"
-        if 0 <= end_y < height and 0 <= sx < width and grid[end_y][sx] == " ":
-            grid[end_y][sx] = "▼" if dy > sy else "▲"
+        column = [row[sx] if 0 <= sx < width else " " for row in grid]
+        _arrow_cell(column, dy, 1 if dy > sy else -1, "▼" if dy > sy else "▲")
+        for y, ch in enumerate(column):
+            if 0 <= sx < width:
+                grid[y][sx] = ch
     else:
         # L-shaped routing: go horizontal first, then vertical
         mid_x = dx
@@ -183,6 +201,8 @@ def _draw_edge(
         for y in range(start_y + 1, end_y):
             if 0 <= y < height and 0 <= mid_x < width and grid[y][mid_x] == " ":
                 grid[y][mid_x] = "│"
-        # Arrow head
-        if 0 <= dy < height and 0 <= mid_x < width and grid[dy][mid_x] == " ":
-            grid[dy][mid_x] = "▼" if dy > sy else "▲"
+        if 0 <= mid_x < width:
+            column = [row[mid_x] for row in grid]
+            _arrow_cell(column, dy, 1 if dy > sy else -1, "▼" if dy > sy else "▲")
+            for y, ch in enumerate(column):
+                grid[y][mid_x] = ch
