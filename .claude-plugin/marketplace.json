@@ -18,13 +18,7 @@
       "repository": "https://github.com/Lucas-Servi/kegg-mcp-server-python",
       "license": "MIT",
       "keywords": ["mcp", "kegg", "bioinformatics", "pathways", "genomics", "metabolomics", "systems-biology", "science"],
-      "category": "mcp-servers",
-      "mcpServers": {
-        "kegg": {
-          "command": "uvx",
-          "args": ["kegg-mcp-server"]
-        }
-      }
+      "category": "mcp-servers"
     }
   ]
 }

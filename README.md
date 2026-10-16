@@ -7,7 +7,7 @@
 
 An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **34 tools**, **9 resource templates**, and **4 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.). Developed by **Elytron Biotech**.
 
-Built with [FastMCP](https://github.com/jlowin/fastmcp), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, a three-request-per-second rate limit, structured JSON stderr logging, and batch helpers out of the box. No API key is required.
+Built on the official [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) v2 (`MCPServer`), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, a three-request-per-second rate limit, structured JSON stderr logging, and batch helpers out of the box. No API key is required.
 
 Responses are token-aware by default: `get_*_info` tools return a compact `EntrySummary` (entry id, name, class, description, counts of linked entities) unless you pass `detail_level="full"`. Errors are returned as a typed `ErrorResult` the model can reason about, not raised as exceptions.
 
@@ -72,8 +72,17 @@ claude mcp add kegg-mcp-server -- uvx kegg-mcp-server
 Or install as a plugin (includes slash commands, agent, and skill):
 
 ```bash
-claude plugin install Lucas-Servi/kegg-mcp-server-python
+claude plugin marketplace add Lucas-Servi/kegg-mcp-server-python
+claude plugin install kegg-mcp-server@kegg-mcp-server
 ```
+
+Or, in one step (Claude Code v2.1.292+), pointing `install` at the marketplace directly:
+
+```bash
+claude plugin install kegg-mcp-server --marketplace Lucas-Servi/kegg-mcp-server-python
+```
+
+The plugin starts a local (stdio) MCP server, so it works in Claude Code, Cowork, and Claude Desktop, but not in the claude.ai web app.
 
 The plugin bundles:
 
@@ -185,6 +194,16 @@ python -m kegg_mcp_server
 
 ---
 
+## Data handling
+
+- The only network destination is the public KEGG REST API at `https://rest.kegg.jp` (all tools, resources, and the ASCII renderer's KGML fetch go there). Queries you make (IDs, search terms) are sent to KEGG; nothing is sent anywhere else, and there is no telemetry.
+- Responses are cached in memory only (per-operation TTL) and discarded when the server exits; nothing is written to disk.
+- Logs are structured JSON on stderr only, on your machine.
+- No API key or account. Environment variables read: `LOG_LEVEL` and `KEGG_MCP_LOG_TRACEBACKS` (log verbosity only). The HTTP client (httpx) also honours the standard proxy and CA-bundle variables (`HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, …) so it works behind corporate proxies.
+- The `uvx` launcher downloads the pinned `kegg-mcp-server` package and its dependencies from PyPI on first run.
+
+---
+
 ## Development
 
 ```bash
@@ -206,14 +225,14 @@ mcp dev kegg-mcp-server
 
 ```
 src/kegg_mcp_server/
-  server.py       FastMCP instance, lifespan (httpx client + TTL cache), CLI
+  server.py       MCPServer instance, lifespan (httpx client + TTL cache), CLI
   client.py       KEGGClient: async KEGG REST with retry/backoff + KEGG-politeness semaphore
   cache.py        Per-op TTL cache (info 24h, list 1h, entry ops 5min)
   parsers.py      KEGG flat-file and tab-delimited response parsers + summarize_flat_entry
   errors.py       KEGGAPIError exception type
   logging.py      JSON stderr logger (stdout is reserved for MCP stdio framing)
-  resources.py    8 MCP resource templates
-  prompts.py      3 bioinformatics workflow prompts
+  resources.py    9 MCP resource templates
+  prompts.py      4 bioinformatics workflow prompts
   models/         Pydantic models for all KEGG entity types + EntrySummary + ErrorResult
   tools/          13 tool modules, each with a register(mcp) function; _common.py has the
                   @kegg_tool error-boundary decorator and shared READ_ONLY annotations

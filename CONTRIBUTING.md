@@ -22,9 +22,13 @@ pip install -e ".[dev]"
 
 The vendored set for the MCPB bundle is derived from `requirements.txt` by
 `.github/workflows/release-mcpb.yml` rather than repeated in the workflow, so there is
-one list to update. A version bump must land in **four** files —
+one list to update. A version bump must land in the four version fields —
 `src/kegg_mcp_server/__init__.py`, `manifest.json`, `.claude-plugin/plugin.json` and
-`.claude-plugin/marketplace.json` — and `tests/test_versioning.py` fails if any drifts.
+`.claude-plugin/marketplace.json` — **plus** the exact pin in `.mcp.json`
+(`uvx kegg-mcp-server==X.Y.Z`); `tests/test_versioning.py` fails if any drifts. The pin
+exists because the Claude plugin directory blocks an unpinned `uvx` launcher, and it
+must name a version already on PyPI — push the `v*` tag right after the bump commit
+(the tag triggers the PyPI publish) before relying on the new pin.
 
 ## Running Tests
 

@@ -12,6 +12,9 @@
   "homepage": "https://github.com/Lucas-Servi/kegg-mcp-server-python",
   "repository": "https://github.com/Lucas-Servi/kegg-mcp-server-python",
   "license": "MIT",
+  "icon": "./assets/icon.svg",
+  "documentationUrl": "https://github.com/Lucas-Servi/kegg-mcp-server-python#readme",
+  "supportUrl": "https://github.com/Lucas-Servi/kegg-mcp-server-python/issues",
   "keywords": [
     "kegg",
     "bioinformatics",

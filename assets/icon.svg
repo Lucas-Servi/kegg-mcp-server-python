@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect x="16" y="16" width="480" height="480" rx="72" fill="#0F4C5C"/>
+  <g stroke="#E8F1F2" stroke-width="14" stroke-linecap="round">
+    <line x1="172" y1="178" x2="206" y2="156"/>
+    <line x1="294" y1="140" x2="324" y2="157"/>
+    <line x1="260" y1="159" x2="260" y2="215"/>
+    <line x1="230" y1="304" x2="201" y2="327"/>
+    <line x1="295" y1="297" x2="318" y2="309"/>
+  </g>
+  <g fill="#E8F1F2">
+    <polygon points="228,142 212,172 193,144"/>
+    <polygon points="346,170 312,170 329,141"/>
+    <polygon points="260,241 243,211 277,211"/>
+    <polygon points="180,344 193,312 214,338"/>
+    <polygon points="342,321 307,323 322,292"/>
+  </g>
+  <circle cx="140" cy="200" r="34" fill="#E8F1F2"/>
+  <circle cx="260" cy="120" r="34" fill="#E8F1F2"/>
+  <circle cx="380" cy="190" r="34" fill="#E8F1F2"/>
+  <circle cx="260" cy="280" r="34" fill="#E8F1F2"/>
+  <circle cx="150" cy="368" r="34" fill="#E8F1F2"/>
+  <circle cx="380" cy="340" r="38" fill="#F2A541"/>
+</svg>
