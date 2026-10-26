@@ -44,6 +44,9 @@ dependencies = [
     "cachetools>=5.3",
     "tenacity>=8.2",
     "defusedxml>=0.7",
+    # draw_pathway_map renders its PNG with Pillow (its bundled default font, so no
+    # system fonts are needed).
+    "pillow>=10.1",
 ]
 
 [project.optional-dependencies]

@@ -5,6 +5,7 @@ pydantic>=2.0
 cachetools>=5.3
 tenacity>=8.2
 defusedxml>=0.7
+pillow>=10.1
 
 # Development dependencies
 pytest>=8.0

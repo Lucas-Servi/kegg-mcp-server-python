@@ -4,4 +4,4 @@ Developed by Elytron Biotech. Exposes the KEGG REST API to LLM clients via
 the Model Context Protocol (MCP).
 """
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"

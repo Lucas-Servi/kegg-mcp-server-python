@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!DOCTYPE pathway SYSTEM "https://www.kegg.jp/kegg/xml/KGML_v0.7.2_.dtd">
+<pathway name="path:ko00010" org="ko" number="00010"
+         title="Glycolysis / Gluconeogenesis"
+         image="https://www.kegg.jp/kegg/pathway/ko/ko00010.png"
+         link="https://www.kegg.jp/kegg-bin/show_pathway?ko00010">
+    <entry id="1" name="ko:K00844 ko:K12407" type="ortholog" reaction="rn:R01786">
+        <graphics name="K00844..." type="rectangle" x="200" y="100" width="46" height="17"/>
+    </entry>
+    <entry id="2" name="ko:K01810" type="ortholog" reaction="rn:R02740">
+        <graphics name="K01810" type="rectangle" x="200" y="200" width="46" height="17"/>
+    </entry>
+    <entry id="3" name="ko:K01623 ko:K01624" type="ortholog" reaction="rn:R01068">
+        <graphics name="K01623..." type="rectangle" x="200" y="300" width="46" height="17"/>
+    </entry>
+    <entry id="10" name="cpd:C00267" type="compound">
+        <graphics name="C00267" type="circle" x="150" y="100" width="8" height="8"/>
+    </entry>
+    <entry id="11" name="cpd:C00668" type="compound">
+        <graphics name="C00668" type="circle" x="150" y="200" width="8" height="8"/>
+    </entry>
+    <entry id="12" name="cpd:C05345" type="compound">
+        <graphics name="C05345" type="circle" x="150" y="300" width="8" height="8"/>
+    </entry>
+    <entry id="20" name="path:ko00030" type="map">
+        <graphics name="Pentose phosphate pathway" type="roundrectangle" x="400" y="200" width="62" height="120"/>
+    </entry>
+    <entry id="21" name="path:ko00010" type="map">
+        <graphics name="TITLE:Glycolysis / Gluconeogenesis" type="roundrectangle" x="150" y="20" width="200" height="25"/>
+    </entry>
+    <reaction id="1" name="rn:R01786" type="irreversible">
+        <substrate id="10" name="cpd:C00267"/>
+        <product id="11" name="cpd:C00668"/>
+    </reaction>
+    <reaction id="2" name="rn:R02740" type="reversible">
+        <substrate id="11" name="cpd:C00668"/>
+        <product id="12" name="cpd:C05345"/>
+    </reaction>
+</pathway>

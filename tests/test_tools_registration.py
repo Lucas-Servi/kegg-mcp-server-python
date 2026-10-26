@@ -109,8 +109,8 @@ def fake_mcp() -> FakeMCP:
     return m
 
 
-def test_all_33_tools_register(fake_mcp: FakeMCP) -> None:
-    assert len(fake_mcp.tools) == 34
+def test_all_35_tools_register(fake_mcp: FakeMCP) -> None:
+    assert len(fake_mcp.tools) == 35
 
 
 def test_every_tool_has_read_only_annotation(fake_mcp: FakeMCP) -> None:
@@ -124,9 +124,9 @@ def test_every_tool_has_read_only_annotation(fake_mcp: FakeMCP) -> None:
         assert annot.destructive_hint is False
 
 
-def test_server_module_registers_same_33_tools() -> None:
+def test_server_module_registers_same_35_tools() -> None:
     tools = asyncio.run(real_mcp.list_tools())
-    assert len(tools) == 34
+    assert len(tools) == 35
 
 
 @pytest.mark.parametrize(

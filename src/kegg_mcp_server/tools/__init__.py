@@ -20,6 +20,7 @@ def register_all_tools(mcp: MCPServer) -> None:
         glycans,
         modules,
         orthology,
+        pathway_map,
         pathways,
         reactions,
     )
@@ -37,6 +38,7 @@ def register_all_tools(mcp: MCPServer) -> None:
         glycans,
         modules,
         orthology,
+        pathway_map,
         pathways,
         reactions,
     ]:

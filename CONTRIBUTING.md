@@ -146,3 +146,13 @@ entries back by position only when the counts match, and caches an entry per id 
 **Idle connections live 60 s on KEGG's side** (`Keep-Alive: timeout=60`), but httpx expires them
 after 5 s by default — so `keepalive_expiry` is set to 55 s, which saves the ~1 s TLS reconnect on
 most tool calls. KEGG serves HTTP/1.1 only and never compresses, so HTTP/2 and gzip are no-ops.
+
+**`/list` and `/link` take `+`-joined batches (100 ids per request is fine).** `/list/K00844+C00031`
+answers one `id\tdescription` line per known id, **without** a database prefix for KOs and
+compounds (`K00844\tHK; hexokinase …`); unknown ids are dropped. `draw_pathway_map` therefore maps
+EC → box through `/link/ec/<the map's own KOs>` (one or a few cached requests per map) rather than
+`/link/ko/<every EC the caller passed>`, which would cost one batch per 100 ECs of a whole genome.
+
+**Global/overview maps (01100, 012xx) have KGML, but it is lines, not boxes.** `/get/ko01100/kgml`
+is 200; `draw_pathway_map` refuses those numbers up front (`code: "global_map"`) instead of drawing
+an unreadable image.

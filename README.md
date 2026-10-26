@@ -5,13 +5,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions/workflows/ci.yml/badge.svg)](https://github.com/Lucas-Servi/kegg-mcp-server-python/actions)
 
-An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **34 tools**, **9 resource templates**, and **4 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.). Developed by **Elytron Biotech**.
+An unofficial Python [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [KEGG](https://www.kegg.jp) bioinformatics database. It exposes **35 tools**, **9 resource templates**, and **4 guided prompts** to any MCP-compatible client (Claude Desktop, Claude Code, Cursor, etc.). Developed by **Elytron Biotech**.
 
 Built on the official [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) v2 (`MCPServer`), returns **structured Pydantic JSON** (not raw text), and includes per-operation TTL caching, request retry with exponential backoff, a three-request-per-second rate limit, structured JSON stderr logging, and batch helpers out of the box. No API key is required.
 
 Responses are token-aware by default: `get_*_info` tools return a compact `EntrySummary` (entry id, name, class, description, counts of linked entities) unless you pass `detail_level="full"`. List- and mapping-shaped outputs are capped at 100 items and report the full count plus `truncated`. Failures are MCP tool errors (`isError: true`) whose text is a typed `ErrorResult` JSON (`code`, `retryable`, `hint`) the model can reason about.
 
 > **0.5.0 changes output shapes:** failures (including not-found) are now `isError: true` instead of a normal result; `convert_identifiers` maps each source ID to a **list** of targets; link/ortholog/pathway-gene/DDI outputs are capped with `truncated`; `batch_entry_lookup` returns summaries unless `detail_level="full"`; logging is configured with `--log-level` / `--log-tracebacks` instead of environment variables.
+
+> **0.6.0 adds `draw_pathway_map`:** a PNG pathway map with gene boxes coloured by KO/EC groups, redrawn from KGML (new dependency: Pillow). See [Pathway map images](#pathway-map-images).
 
 > **Usage notice:** This is a community project and is not affiliated with or endorsed by KEGG or Kanehisa Laboratories. [KEGG states that its REST API is for academic use by academic users](https://www.kegg.jp/kegg/rest/); non-academic users must follow KEGG's linked non-academic-use guidance. Users are responsible for ensuring that their use complies with those terms.
 
@@ -104,7 +106,7 @@ The release bundle is built specifically for Linux x86-64 and CPython 3.12 becau
 
 ## What's included
 
-### 34 Tools
+### 35 Tools
 
 | Category | Tools | Examples |
 |----------|-------|---------|
@@ -121,7 +123,7 @@ The release bundle is built specifically for Linux x86-64 and CPython 3.12 becau
 | **Glycans** | `search_glycans`, `get_glycan_info` | Glycan composition, reactions |
 | **BRITE** | `search_brite`, `get_brite_info` | Functional hierarchies (level counts by default; `detail_level="full"` for the capped tree). Takes any id form KEGG emits — `br:ko00001`, `ko00001`, or the bare `00001` from `search_brite` |
 | **Cross-database** | `batch_entry_lookup`, `convert_identifiers`, `find_related_entries` | Bulk fetch (up to 50), ID mapping within one kind — genes ↔ UniProt/NCBI, chemistry ↔ ChEBI/PubChem |
-| **Visualization** | `render_pathway_ascii` | ASCII art rendering of pathway topology (chain or grid mode) |
+| **Visualization** | `render_pathway_ascii`, `draw_pathway_map` | ASCII art rendering of pathway topology (chain or grid mode); a PNG map with gene boxes coloured by KO/EC groups (e.g. one per genome) |
 
 ### 9 Resource Templates
 
@@ -147,6 +149,34 @@ kegg://search/{database}/{query}   e.g. kegg://search/compound/glucose
 | `drug_target_investigation` | `drug_name` | Drug lookup, target identification, pathway mapping, DDI screening |
 | `metabolic_pathway_comparison` | `pathway_id`, `organisms` | Compares gene/compound content of a pathway across species |
 | `visualize_pathway` | `pathway_id`, `organism` | Renders pathway as ASCII art (chain + grid), annotates key steps |
+
+---
+
+## Pathway map images
+
+`draw_pathway_map` draws a KEGG map as a PNG and colours its gene boxes by up to 8
+highlight groups, for example one per genome:
+
+```json
+{"pathway_id": "map00010",
+ "highlight": {"Strain A": ["K00844", "K01810", "EC:4.1.2.13"],
+               "Strain B": ["K01810", "2.7.1.11"]}}
+```
+
+- Every box is split into one stripe per group: coloured when the group has one of the box's
+  KOs, grey when it doesn't. A KO without a direct match is coloured through EC numbers when
+  **one item** carries every EC KEGG links to that KO (listed as `matched_by_ec`, a less specific
+  match than a KO). An item may hold one gene's ids separated by spaces, e.g. a GenBank
+  `db_xref` string as is, so a bifunctional KO isn't lit by two unrelated single-function genes.
+- The image is **redrawn from KGML** (boxes, compounds, reaction lines, links to other maps)
+  with Pillow; KEGG's own map bitmap is not fetched or redistributed. The footer credits KEGG.
+- The result is a text block with the summary JSON (also `structuredContent`) and an image
+  block (`image/png`). The summary lists, per group, the map KOs found and boxes coloured, and per
+  box its KOs and the groups that have it, so an agent can check the figure without vision.
+- `map`, `ko`, organism (`eco00020`, drawn as the KO reference map) and bare (`00010`) ids are
+  accepted. Global/overview maps (011xx, 012xx) are refused with `code: "global_map"`.
+- The drawing code is importable without MCP: `kegg_mcp_server.pathway_map.build_pathway_map(
+  kegg_client, pathway_id, groups)` returns the PNG bytes and the same summary.
 
 ---
 
